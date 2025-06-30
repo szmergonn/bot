@@ -2,20 +2,20 @@
 
 import secrets
 import string
-from config import INITIAL_CREDITS, AVAILABLE_MODELS, REFERRAL_CODE_LENGTH
+from config import INITIAL_CREDITS, AVAILABLE_MODELS, REFERRAL_CODE_LENGTH, AVAILABLE_VOICES
 
 # --- Функции для работы с БД. Каждая принимает 'supabase' клиент как первый аргумент ---
 
 DEFAULT_MODEL = list(AVAILABLE_MODELS.values())[0]
+DEFAULT_VOICE = list(AVAILABLE_VOICES.values())[0]
 
 def generate_referral_code(user_id):
     """Генерирует уникальный реферальный код для пользователя."""
-    # Создаем код из префикса + user_id + случайная строка
     random_part = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(REFERRAL_CODE_LENGTH))
     return f"ref{user_id}_{random_part}"
 
 async def add_or_update_user(supabase, user_id, invited_by=None):
-    """Добавляет нового пользователя с реферальным кодом, если его нет."""
+    """Добавляет нового пользователя с реферальным кодом и настройками голоса, если его нет."""
     try:
         # Проверяем, существует ли пользователь
         existing_user = await get_user_data(supabase, user_id)
@@ -37,7 +37,10 @@ async def add_or_update_user(supabase, user_id, invited_by=None):
             "user_id": user_id, 
             "credits": INITIAL_CREDITS, 
             "model": DEFAULT_MODEL,
-            "referral_code": referral_code
+            "referral_code": referral_code,
+            "selected_voice": DEFAULT_VOICE,
+            "voice_enabled": False,
+            "voice_language": "ru"
         }
         
         # Добавляем информацию о том, кто пригласил, если есть
@@ -52,16 +55,100 @@ async def add_or_update_user(supabase, user_id, invited_by=None):
         return None
 
 async def get_user_data(supabase, user_id):
-    """Получает все данные пользователя включая реферальную информацию."""
+    """Получает все данные пользователя включая голосовые настройки."""
     try:
         response = await supabase.table("users").select(
-            "state, mode, credits, model, referral_code, invited_by, created_at"
+            "state, mode, credits, model, referral_code, invited_by, created_at, "
+            "voice_enabled, selected_voice, voice_language, voice_messages_sent, voice_messages_received"
         ).eq("user_id", user_id).execute()
         if response.data:
             return response.data[0]
     except Exception as e:
         print(f"Ошибка при получении данных пользователя {user_id}: {e}")
     return None
+
+# --- НОВЫЕ ФУНКЦИИ ДЛЯ ГОЛОСОВЫХ СООБЩЕНИЙ ---
+
+async def get_user_voice_settings(supabase, user_id):
+    """Получает голосовые настройки пользователя."""
+    try:
+        response = await supabase.table("users").select(
+            "voice_enabled, selected_voice, voice_language"
+        ).eq("user_id", user_id).execute()
+        if response.data:
+            return response.data[0]
+    except Exception as e:
+        print(f"Ошибка при получении голосовых настроек {user_id}: {e}")
+    return {"voice_enabled": False, "selected_voice": DEFAULT_VOICE, "voice_language": "ru"}
+
+async def set_voice_enabled(supabase, user_id, enabled):
+    """Включает или выключает голосовые ответы для пользователя."""
+    try:
+        await supabase.table("users").update({"voice_enabled": enabled}).eq("user_id", user_id).execute()
+        return True
+    except Exception as e:
+        print(f"Ошибка при изменении voice_enabled для {user_id}: {e}")
+        return False
+
+async def set_user_voice(supabase, user_id, voice_id):
+    """Устанавливает выбранный голос для пользователя."""
+    if voice_id in AVAILABLE_VOICES.values():
+        try:
+            await supabase.table("users").update({"selected_voice": voice_id}).eq("user_id", user_id).execute()
+            return True
+        except Exception as e:
+            print(f"Ошибка при установке голоса для {user_id}: {e}")
+    return False
+
+async def set_user_voice_language(supabase, user_id, language):
+    """Устанавливает язык распознавания речи для пользователя."""
+    allowed_languages = ['ru', 'en', 'es', 'fr', 'de', 'it', 'pt', 'ja', 'ko', 'zh', 'pl']
+    if language in allowed_languages:
+        try:
+            await supabase.table("users").update({"voice_language": language}).eq("user_id", user_id).execute()
+            return True
+        except Exception as e:
+            print(f"Ошибка при установке языка голоса для {user_id}: {e}")
+    return False
+
+async def increment_voice_stats(supabase, user_id, message_type):
+    """Увеличивает счетчик отправленных или полученных голосовых сообщений."""
+    try:
+        # Получаем текущие значения
+        current_data = await get_user_data(supabase, user_id)
+        if not current_data:
+            return
+            
+        if message_type == "sent":
+            current_count = current_data.get("voice_messages_sent", 0)
+            await supabase.table("users").update({
+                "voice_messages_sent": current_count + 1
+            }).eq("user_id", user_id).execute()
+        elif message_type == "received":
+            current_count = current_data.get("voice_messages_received", 0)
+            await supabase.table("users").update({
+                "voice_messages_received": current_count + 1
+            }).eq("user_id", user_id).execute()
+    except Exception as e:
+        print(f"Ошибка при обновлении статистики голосовых для {user_id}: {e}")
+
+async def get_voice_stats(supabase, user_id):
+    """Получает статистику использования голосовых сообщений."""
+    try:
+        response = await supabase.table("users").select(
+            "voice_messages_sent, voice_messages_received"
+        ).eq("user_id", user_id).execute()
+        if response.data:
+            data = response.data[0]
+            return {
+                "sent": data.get("voice_messages_sent", 0),
+                "received": data.get("voice_messages_received", 0)
+            }
+    except Exception as e:
+        print(f"Ошибка при получении статистики голосовых для {user_id}: {e}")
+    return {"sent": 0, "received": 0}
+
+# --- СУЩЕСТВУЮЩИЕ ФУНКЦИИ (без изменений) ---
 
 async def get_user_by_referral_code(supabase, referral_code):
     """Находит пользователя по реферальному коду."""
@@ -78,12 +165,8 @@ async def get_user_by_referral_code(supabase, referral_code):
 async def award_referral_bonuses(supabase, inviter_id, new_user_id, inviter_bonus, new_user_bonus):
     """Начисляет бонусы за реферальную программу."""
     try:
-        # Начисляем бонус пригласившему
         await add_user_credits(supabase, inviter_id, inviter_bonus)
-        
-        # Начисляем бонус новому пользователю
         await add_user_credits(supabase, new_user_id, new_user_bonus)
-        
         return True
     except Exception as e:
         print(f"Ошибка при начислении реферальных бонусов: {e}")
@@ -137,7 +220,6 @@ async def count_users(supabase):
 async def get_referral_stats(supabase, user_id):
     """Получает статистику реферальной программы для пользователя."""
     try:
-        # Количество приглашенных пользователей
         response = await supabase.table("users").select("user_id", count='exact').eq("invited_by", user_id).execute()
         invited_count = response.count or 0
         return {"invited_count": invited_count}

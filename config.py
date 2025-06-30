@@ -33,6 +33,36 @@ INITIAL_CREDITS = 7
 MESSAGE_COST = 1
 IMAGE_COST = 5
 
+# --- НОВОЕ: Настройки голосовых сообщений ---
+VOICE_TO_TEXT_COST = 2      # Стоимость распознавания речи
+TEXT_TO_VOICE_COST = 3      # Стоимость синтеза речи
+MAX_VOICE_DURATION = 300    # Максимальная длительность голосового сообщения (секунды)
+
+# Доступные голоса для TTS (OpenAI поддерживает: alloy, echo, fable, onyx, nova, shimmer)
+AVAILABLE_VOICES = {
+    "🎭 Alloy": "alloy",           # Нейтральный
+    "🔊 Echo": "echo",             # Мужской 
+    "📖 Fable": "fable",           # Британский акцент
+    "💎 Onyx": "onyx",             # Глубокий мужской
+    "✨ Nova": "nova",             # Женский
+    "🌟 Shimmer": "shimmer"        # Женский мягкий
+}
+
+# Доступные языки для распознавания речи
+AVAILABLE_LANGUAGES = {
+    "🇷🇺 Русский": "ru",
+    "🇺🇸 English": "en", 
+    "🇪🇸 Español": "es",
+    "🇫🇷 Français": "fr",
+    "🇩🇪 Deutsch": "de",
+    "🇮🇹 Italiano": "it",
+    "🇵🇹 Português": "pt",
+    "🇯🇵 日本語": "ja",
+    "🇰🇷 한국어": "ko",
+    "🇨🇳 中文": "zh",
+    "🇵🇱 Polski": "pl"
+}
+
 # Словарь доступных моделей
 AVAILABLE_MODELS = {
     "GPT-3.5 Turbo": "gpt-3.5-turbo",
@@ -64,3 +94,4 @@ print("✅ Конфигурация загружена успешно!")
 print(f"🤖 Бот: @{BOT_USERNAME}")
 print(f"👑 Админы: {ADMIN_USER_IDS}")
 print(f"🔗 Supabase: {SUPABASE_URL[:30]}...")
+print(f"🎙️ Голосовые сообщения: включены ({len(AVAILABLE_VOICES)} голосов)")

@@ -9,7 +9,7 @@ import config
 from database import db
 # ПРАВИЛЬНЫЙ ОФИЦИАЛЬНЫЙ ИМПОРТ
 from supabase import acreate_client, AsyncClient
-from handlers import common_handlers, message_handlers, menu_handler, admin_handlers, profile_handler
+from handlers import common_handlers, message_handlers, menu_handler, admin_handlers, profile_handler, voice_handler
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -35,6 +35,7 @@ async def main() -> None:
     menu_handler.register_handlers(application, supabase_client)
     admin_handlers.register_handlers(application, supabase_client)
     profile_handler.register_handlers(application, supabase_client)
+    voice_handler.register_handlers(application, openai_client, supabase_client)
 
     try:
         logger.info("Запуск бота...")
