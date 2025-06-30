@@ -4,31 +4,76 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler
 from config import CHAT_MODES, AVAILABLE_MODELS, AVAILABLE_VOICES, AVAILABLE_LANGUAGES, VOICE_TO_TEXT_COST, TEXT_TO_VOICE_COST, MESSAGE_COST
 from database import db
+from translations import get_text
 
 # ИСПРАВЛЕНО: Принимаем клиент supabase
 def register_handlers(application, supabase):
 
-    def build_main_menu():
+    async def build_main_menu(user_language):
+        """Строит главное меню на нужном языке."""
         buttons = [
-            [InlineKeyboardButton("🗣️ Режим общения", callback_data="submenu_modes")],
-            [InlineKeyboardButton("🧠 Выбрать модель", callback_data="submenu_models")],
-            [InlineKeyboardButton("🎙️ Голосовые сообщения", callback_data="voice_settings")],
-            [InlineKeyboardButton("🖼️ Сгенерировать изображение", callback_data="image_generate")]
+            [InlineKeyboardButton(get_text(user_language, 'chat_mode'), callback_data="submenu_modes")],
+            [InlineKeyboardButton(get_text(user_language, 'select_model'), callback_data="submenu_models")],
+            [InlineKeyboardButton(get_text(user_language, 'voice_messages'), callback_data="voice_settings")],
+            [InlineKeyboardButton(get_text(user_language, 'generate_image'), callback_data="image_generate")],
+            [InlineKeyboardButton(get_text(user_language, 'language_settings'), callback_data="language_settings")]
         ]
         return InlineKeyboardMarkup(buttons)
 
-    def build_modes_menu():
-        mode_buttons = [[InlineKeyboardButton(mode, callback_data=f"mode_{mode}")] for mode in CHAT_MODES.keys()]
-        mode_buttons.append([InlineKeyboardButton("⬅️ Назад", callback_data="main_menu")])
+    async def build_modes_menu(user_language):
+        """Строит меню режимов на нужном языке."""
+        # Словарь для локализации режимов чата
+        mode_translations = {
+            'Помощник': {
+                'ru': get_text('ru', 'chat_mode_assistant'),
+                'en': get_text('en', 'chat_mode_assistant'), 
+                'pl': get_text('pl', 'chat_mode_assistant')
+            },
+            'Шутник': {
+                'ru': get_text('ru', 'chat_mode_joker'),
+                'en': get_text('en', 'chat_mode_joker'),
+                'pl': get_text('pl', 'chat_mode_joker')
+            },
+            'Переводчик': {
+                'ru': get_text('ru', 'chat_mode_translator'),
+                'en': get_text('en', 'chat_mode_translator'),
+                'pl': get_text('pl', 'chat_mode_translator')
+            }
+        }
+        
+        mode_buttons = []
+        for mode_key in CHAT_MODES.keys():
+            # Получаем локализованное название
+            localized_name = mode_translations.get(mode_key, {}).get(user_language, mode_key)
+            mode_buttons.append([InlineKeyboardButton(localized_name, callback_data=f"mode_{mode_key}")])
+        
+        mode_buttons.append([InlineKeyboardButton(get_text(user_language, 'back'), callback_data="main_menu")])
         return InlineKeyboardMarkup(mode_buttons)
 
-    def build_model_menu():
+    async def build_model_menu(user_language):
+        """Строит меню моделей на нужном языке."""
         buttons = [[InlineKeyboardButton(name, callback_data=f"model_{model_id}")] for name, model_id in AVAILABLE_MODELS.items()]
-        buttons.append([InlineKeyboardButton("⬅️ Назад", callback_data="main_menu")])
+        buttons.append([InlineKeyboardButton(get_text(user_language, 'back'), callback_data="main_menu")])
+        return InlineKeyboardMarkup(buttons)
+
+    async def build_language_menu(user_language):
+        """Строит меню выбора языка интерфейса."""
+        buttons = [
+            [InlineKeyboardButton(get_text(user_language, 'lang_russian'), callback_data="set_lang_ru")],
+            [InlineKeyboardButton(get_text(user_language, 'lang_english'), callback_data="set_lang_en")],
+            [InlineKeyboardButton(get_text(user_language, 'lang_polish'), callback_data="set_lang_pl")],
+            [InlineKeyboardButton(get_text(user_language, 'back'), callback_data="main_menu")]
+        ]
         return InlineKeyboardMarkup(buttons)
     
     async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text("Главное меню:", reply_markup=build_main_menu())
+        chat_id = update.effective_chat.id
+        user_language = await db.get_user_language(supabase, chat_id)
+        
+        menu_text = get_text(user_language, 'main_menu')
+        menu_markup = await build_main_menu(user_language)
+        
+        await update.message.reply_text(menu_text, reply_markup=menu_markup)
 
     async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
@@ -36,57 +81,100 @@ def register_handlers(application, supabase):
         chat_id = query.message.chat_id
         user_id = query.from_user.id
         
+        # Получаем язык пользователя для всех сообщений
+        user_language = await db.get_user_language(supabase, user_id)
+        
         if query.data == "main_menu":
-            await query.edit_message_text("Главное меню:", reply_markup=build_main_menu())
+            menu_text = get_text(user_language, 'main_menu')
+            menu_markup = await build_main_menu(user_language)
+            await query.edit_message_text(menu_text, reply_markup=menu_markup)
             
         elif query.data == "submenu_modes":
-            await query.edit_message_text("Выберите режим общения:", reply_markup=build_modes_menu())
+            mode_text = get_text(user_language, 'select_chat_mode')
+            mode_markup = await build_modes_menu(user_language)
+            await query.edit_message_text(mode_text, reply_markup=mode_markup)
             
         elif query.data == "submenu_models":
-            await query.edit_message_text("Выберите модель для общения:", reply_markup=build_model_menu())
+            model_text = get_text(user_language, 'select_model_menu')
+            model_markup = await build_model_menu(user_language)
+            await query.edit_message_text(model_text, reply_markup=model_markup)
+            
+        elif query.data == "language_settings":
+            language_text = get_text(user_language, 'language_settings_title')
+            language_text += "\n\n" + get_text(user_language, 'language_settings_hint')
+            language_markup = await build_language_menu(user_language)
+            await query.edit_message_text(language_text, reply_markup=language_markup, parse_mode='Markdown')
+            
+        elif query.data.startswith("set_lang_"):
+            new_language = query.data.replace("set_lang_", "")
+            success = await db.set_user_language(supabase, user_id, new_language)
+            
+            if success:
+                # Получаем название языка на новом языке
+                language_names = {
+                    'ru': get_text(new_language, 'lang_russian'),
+                    'en': get_text(new_language, 'lang_english'), 
+                    'pl': get_text(new_language, 'lang_polish')
+                }
+                language_name = language_names.get(new_language, new_language)
+                
+                success_text = get_text(new_language, 'language_changed_interface', language=language_name)
+                main_menu_markup = await build_main_menu(new_language)
+                await query.edit_message_text(success_text, reply_markup=main_menu_markup, parse_mode='Markdown')
+            else:
+                error_text = get_text(user_language, 'language_change_interface_error')
+                main_menu_markup = await build_main_menu(user_language)
+                await query.edit_message_text(error_text, reply_markup=main_menu_markup)
             
         elif query.data.startswith("mode_"):
             mode_name = query.data.split("_")[1]
             await db.set_user_mode(supabase, chat_id, mode_name)
-            await query.edit_message_text(f"Режим изменен на: *{mode_name}*. Возвращаю в главное меню...", parse_mode='Markdown', reply_markup=build_main_menu())
+            
+            success_text = get_text(user_language, 'mode_changed', mode=mode_name)
+            main_menu_markup = await build_main_menu(user_language)
+            await query.edit_message_text(success_text, parse_mode='Markdown', reply_markup=main_menu_markup)
             
         elif query.data.startswith("model_"):
             model_id = query.data.split("model_")[1]
             await db.set_user_model(supabase, chat_id, model_id)
             model_name = next((name for name, mid in AVAILABLE_MODELS.items() if mid == model_id), model_id)
-            await query.edit_message_text(f"Модель изменена на: *{model_name}*. Возвращаю в главное меню...", parse_mode='Markdown', reply_markup=build_main_menu())
+            
+            success_text = get_text(user_language, 'model_changed', model=model_name)
+            main_menu_markup = await build_main_menu(user_language)
+            await query.edit_message_text(success_text, parse_mode='Markdown', reply_markup=main_menu_markup)
             
         elif query.data == "image_generate":
             await db.set_user_state(supabase, chat_id, "awaiting_image_prompt")
-            await query.edit_message_text(text="Отлично! Присылайте текстовый запрос для создания картинки.")
+            prompt_text = get_text(user_language, 'image_prompt_request')
+            await query.edit_message_text(text=prompt_text)
             
         # --- НОВЫЕ ОБРАБОТЧИКИ ДЛЯ ГОЛОСОВЫХ СООБЩЕНИЙ ---
         elif query.data == "voice_settings":
-            await show_voice_settings(query, supabase, user_id)
+            await show_voice_settings(query, supabase, user_id, user_language)
             
         elif query.data == "voice_toggle":
-            await toggle_voice_mode(query, supabase, user_id)
+            await toggle_voice_mode(query, supabase, user_id, user_language)
             
         elif query.data == "voice_select":
-            await show_voice_selection(query)
+            await show_voice_selection(query, user_language)
             
         elif query.data == "voice_language":
-            await show_language_selection(query)
+            await show_language_selection(query, user_language)
             
         elif query.data.startswith("voice_set_"):
             voice_id = query.data.replace("voice_set_", "")
-            await set_user_voice(query, supabase, user_id, voice_id)
+            await set_user_voice(query, supabase, user_id, voice_id, user_language)
             
         elif query.data.startswith("voice_lang_"):
             language_code = query.data.replace("voice_lang_", "")
-            await set_user_language(query, supabase, user_id, language_code)
+            await set_user_voice_language(query, supabase, user_id, language_code, user_language)
             
         elif query.data == "voice_settings_back":
-            await show_voice_settings(query, supabase, user_id)
+            await show_voice_settings(query, supabase, user_id, user_language)
 
     # --- ФУНКЦИИ ДЛЯ РАБОТЫ С ГОЛОСОВЫМИ НАСТРОЙКАМИ ---
 
-    async def show_voice_settings(query, supabase, user_id):
+    async def show_voice_settings(query, supabase, user_id, user_language):
         """Показывает настройки голосовых сообщений."""
         voice_settings = await db.get_user_voice_settings(supabase, user_id)
         voice_stats = await db.get_voice_stats(supabase, user_id)
@@ -105,33 +193,32 @@ def register_handlers(application, supabase):
                 current_language_name = name
                 break
         
-        status = "🔊 Включены" if voice_settings.get('voice_enabled') else "🔇 Выключены"
+        status = get_text(user_language, 'voice_enabled') if voice_settings.get('voice_enabled') else get_text(user_language, 'voice_disabled')
         
         total_voice_cost = VOICE_TO_TEXT_COST + TEXT_TO_VOICE_COST + MESSAGE_COST
         
         settings_text = (
-            f"🎙️ **Настройки голосовых сообщений**\n\n"
-            f"**Статус:** {status}\n"
-            f"**Текущий голос:** {current_voice_name}\n"
-            f"**Язык распознавания:** {current_language_name}\n\n"
-            f"📊 **Статистика:**\n"
-            f"• Отправлено голосовых: {voice_stats['sent']}\n"
-            f"• Получено голосовых: {voice_stats['received']}\n\n"
-            f"💰 **Стоимость:**\n"
-            f"• Только распознавание: {VOICE_TO_TEXT_COST} кредитов\n"
-            f"• Голосовой ответ: {total_voice_cost} кредитов (распознавание + синтез + AI)\n\n"
-            f"⚠️ **Важно:** Для голосовых ответов нужно минимум {total_voice_cost} кредитов!\n\n"
-            f"ℹ️ Отправьте голосовое сообщение для проверки!"
+            f"{get_text(user_language, 'voice_settings_title')}\n\n"
+            f"{get_text(user_language, 'voice_status', status=status)}\n"
+            f"{get_text(user_language, 'current_voice', voice=current_voice_name)}\n"
+            f"{get_text(user_language, 'recognition_language', language=current_language_name)}\n\n"
+            f"{get_text(user_language, 'voice_statistics')}\n"
+            f"{get_text(user_language, 'voice_sent', count=voice_stats['sent'])}\n"
+            f"{get_text(user_language, 'voice_received', count=voice_stats['received'])}\n\n"
+            f"{get_text(user_language, 'voice_costs')}\n"
+            f"{get_text(user_language, 'voice_recognition_cost', cost=VOICE_TO_TEXT_COST)}\n"
+            f"{get_text(user_language, 'voice_response_cost', cost=total_voice_cost)}\n\n"
+            f"{get_text(user_language, 'voice_credit_warning', cost=total_voice_cost)}\n\n"
+            f"{get_text(user_language, 'voice_test_hint')}"
         )
         
+        toggle_text = get_text(user_language, 'voice_toggle_enable') if not voice_settings.get('voice_enabled') else get_text(user_language, 'voice_toggle_disable')
+        
         keyboard = [
-            [InlineKeyboardButton(
-                "🔊 Включить голосовые ответы" if not voice_settings.get('voice_enabled') else "🔇 Выключить голосовые ответы", 
-                callback_data="voice_toggle"
-            )],
-            [InlineKeyboardButton("🎭 Сменить голос", callback_data="voice_select")],
-            [InlineKeyboardButton("🌍 Язык распознавания", callback_data="voice_language")],
-            [InlineKeyboardButton("⬅️ Назад в меню", callback_data="main_menu")]
+            [InlineKeyboardButton(toggle_text, callback_data="voice_toggle")],
+            [InlineKeyboardButton(get_text(user_language, 'change_voice'), callback_data="voice_select")],
+            [InlineKeyboardButton(get_text(user_language, 'voice_recognition_lang'), callback_data="voice_language")],
+            [InlineKeyboardButton(get_text(user_language, 'back_to_menu'), callback_data="main_menu")]
         ]
         
         await query.edit_message_text(
@@ -140,7 +227,7 @@ def register_handlers(application, supabase):
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
-    async def toggle_voice_mode(query, supabase, user_id):
+    async def toggle_voice_mode(query, supabase, user_id, user_language):
         """Переключает режим голосовых ответов."""
         voice_settings = await db.get_user_voice_settings(supabase, user_id)
         new_status = not voice_settings.get('voice_enabled', False)
@@ -148,24 +235,27 @@ def register_handlers(application, supabase):
         success = await db.set_voice_enabled(supabase, user_id, new_status)
         
         if success:
-            status_text = "включены" if new_status else "выключены"
+            if new_status:
+                message_text = get_text(user_language, 'voice_enabled_success')
+            else:
+                message_text = get_text(user_language, 'voice_disabled_success')
+                
             await query.edit_message_text(
-                f"✅ Голосовые ответы {status_text}!\n\n"
-                f"{'🔊 Теперь бот будет отвечать голосом на ваши голосовые сообщения.' if new_status else '💬 Теперь бот будет отвечать текстом на ваши голосовые сообщения.'}\n\n"
-                "Отправьте голосовое сообщение для проверки!",
+                message_text,
                 reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("🔙 К настройкам", callback_data="voice_settings_back")
+                    InlineKeyboardButton("🔙 " + get_text(user_language, 'back'), callback_data="voice_settings_back")
                 ]])
             )
         else:
+            error_text = get_text(user_language, 'voice_change_error')
             await query.edit_message_text(
-                "❌ Ошибка при изменении настроек.",
+                error_text,
                 reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("🔙 К настройкам", callback_data="voice_settings_back")
+                    InlineKeyboardButton("🔙 " + get_text(user_language, 'back'), callback_data="voice_settings_back")
                 ]])
             )
 
-    async def show_voice_selection(query):
+    async def show_voice_selection(query, user_language):
         """Показывает меню выбора голоса."""
         buttons = []
         for voice_name, voice_id in AVAILABLE_VOICES.items():
@@ -174,45 +264,46 @@ def register_handlers(application, supabase):
                 callback_data=f"voice_set_{voice_id}"
             )])
         
-        buttons.append([InlineKeyboardButton("🔙 Назад", callback_data="voice_settings_back")])
+        buttons.append([InlineKeyboardButton("🔙 " + get_text(user_language, 'back'), callback_data="voice_settings_back")])
+        
+        voice_descriptions = {
+            'ru': "🎭 **Выберите голос для ответов:**\n\n🎭 **Alloy** - Нейтральный голос\n🔊 **Echo** - Мужской голос\n📖 **Fable** - Британский акцент\n💎 **Onyx** - Глубокий мужской\n✨ **Nova** - Женский голос\n🌟 **Shimmer** - Мягкий женский\n\nВыберите понравившийся:",
+            'en': "🎭 **Choose voice for responses:**\n\n🎭 **Alloy** - Neutral voice\n🔊 **Echo** - Male voice\n📖 **Fable** - British accent\n💎 **Onyx** - Deep male\n✨ **Nova** - Female voice\n🌟 **Shimmer** - Soft female\n\nChoose your favorite:",
+            'pl': "🎭 **Wybierz głos do odpowiedzi:**\n\n🎭 **Alloy** - Neutralny głos\n🔊 **Echo** - Męski głos\n📖 **Fable** - Brytyjski akcent\n💎 **Onyx** - Głęboki męski\n✨ **Nova** - Kobiecy głos\n🌟 **Shimmer** - Miękki kobiecy\n\nWybierz swój ulubiony:"
+        }
+        
+        description = voice_descriptions.get(user_language, voice_descriptions['en'])
         
         await query.edit_message_text(
-            "🎭 **Выберите голос для ответов:**\n\n"
-            "🎭 **Alloy** - Нейтральный голос\n"
-            "🔊 **Echo** - Мужской голос\n"
-            "📖 **Fable** - Британский акцент\n"
-            "💎 **Onyx** - Глубокий мужской\n"
-            "✨ **Nova** - Женский голос\n"
-            "🌟 **Shimmer** - Мягкий женский\n\n"
-            "Выберите понравившийся:",
+            description,
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup(buttons)
         )
 
-    async def set_user_voice(query, supabase, user_id, voice_id):
+    async def set_user_voice(query, supabase, user_id, voice_id, user_language):
         """Устанавливает выбранный голос."""
         success = await db.set_user_voice(supabase, user_id, voice_id)
         
         if success:
             voice_name = next((name for name, vid in AVAILABLE_VOICES.items() if vid == voice_id), voice_id)
+            success_text = get_text(user_language, 'voice_changed_success', voice=voice_name)
             await query.edit_message_text(
-                f"✅ **Голос изменен!**\n\n"
-                f"Выбранный голос: {voice_name}\n\n"
-                f"Отправьте голосовое сообщение, чтобы услышать новый голос в ответе!",
+                success_text,
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("🔙 К настройкам", callback_data="voice_settings_back")
+                    InlineKeyboardButton("🔙 " + get_text(user_language, 'back'), callback_data="voice_settings_back")
                 ]])
             )
         else:
+            error_text = get_text(user_language, 'voice_change_error_voice')
             await query.edit_message_text(
-                "❌ Ошибка при смене голоса.",
+                error_text,
                 reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("🔙 К настройкам", callback_data="voice_settings_back")
+                    InlineKeyboardButton("🔙 " + get_text(user_language, 'back'), callback_data="voice_settings_back")
                 ]])
             )
 
-    async def show_language_selection(query):
+    async def show_language_selection(query, user_language):
         """Показывает меню выбора языка распознавания."""
         buttons = []
         for language_name, language_code in AVAILABLE_LANGUAGES.items():
@@ -221,36 +312,42 @@ def register_handlers(application, supabase):
                 callback_data=f"voice_lang_{language_code}"
             )])
         
-        buttons.append([InlineKeyboardButton("🔙 Назад", callback_data="voice_settings_back")])
+        buttons.append([InlineKeyboardButton("🔙 " + get_text(user_language, 'back'), callback_data="voice_settings_back")])
+        
+        language_descriptions = {
+            'ru': "🌍 **Выберите язык для распознавания речи:**\n\nВыберите язык, на котором вы будете говорить в голосовых сообщениях.\nЭто поможет боту точнее распознавать вашу речь:",
+            'en': "🌍 **Choose language for speech recognition:**\n\nSelect the language you will speak in voice messages.\nThis will help the bot recognize your speech more accurately:",
+            'pl': "🌍 **Wybierz język rozpoznawania mowy:**\n\nWybierz język, którym będziesz mówić w wiadomościach głosowych.\nTo pomoże botowi dokładniej rozpoznawać twoją mowę:"
+        }
+        
+        description = language_descriptions.get(user_language, language_descriptions['en'])
         
         await query.edit_message_text(
-            "🌍 **Выберите язык для распознавания речи:**\n\n"
-            "Выберите язык, на котором вы будете говорить в голосовых сообщениях.\n"
-            "Это поможет боту точнее распознавать вашу речь:",
+            description,
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup(buttons)
         )
 
-    async def set_user_language(query, supabase, user_id, language_code):
+    async def set_user_voice_language(query, supabase, user_id, language_code, user_language):
         """Устанавливает выбранный язык распознавания."""
         success = await db.set_user_voice_language(supabase, user_id, language_code)
         
         if success:
             language_name = next((name for name, code in AVAILABLE_LANGUAGES.items() if code == language_code), language_code)
+            success_text = get_text(user_language, 'language_changed_success', language=language_name)
             await query.edit_message_text(
-                f"✅ **Язык распознавания изменен!**\n\n"
-                f"Выбранный язык: {language_name}\n\n"
-                f"Теперь отправьте голосовое сообщение на этом языке для проверки!",
+                success_text,
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("🔙 К настройкам", callback_data="voice_settings_back")
+                    InlineKeyboardButton("🔙 " + get_text(user_language, 'back'), callback_data="voice_settings_back")
                 ]])
             )
         else:
+            error_text = get_text(user_language, 'language_change_error')
             await query.edit_message_text(
-                "❌ Ошибка при смене языка.",
+                error_text,
                 reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("🔙 К настройкам", callback_data="voice_settings_back")
+                    InlineKeyboardButton("🔙 " + get_text(user_language, 'back'), callback_data="voice_settings_back")
                 ]])
             )
 

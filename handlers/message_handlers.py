@@ -5,15 +5,20 @@ from telegram.ext import ContextTypes, MessageHandler, filters
 from openai import OpenAI
 from config import CHAT_MODES, MESSAGE_COST, IMAGE_COST
 from database import db
+from translations import get_text
 
 # ИСПРАВЛЕНО: Принимаем supabase
 async def generate_image(update: Update, context: ContextTypes.DEFAULT_TYPE, client: OpenAI, supabase):
     chat_id = update.effective_chat.id
     prompt = update.message.text
     
+    # Получаем язык пользователя
+    user_language = await db.get_user_language(supabase, chat_id)
+    
     current_credits = await db.get_user_credits(supabase, chat_id)
     if current_credits < IMAGE_COST:
-        await update.message.reply_text(f"Недостаточно кредитов. Нужно: {IMAGE_COST}, у вас: {current_credits}.")
+        error_message = get_text(user_language, 'insufficient_credits_image', needed=IMAGE_COST, current=current_credits)
+        await update.message.reply_text(error_message)
         await db.set_user_state(supabase, chat_id, "chat")
         return
 
@@ -22,10 +27,13 @@ async def generate_image(update: Update, context: ContextTypes.DEFAULT_TYPE, cli
         response = client.images.generate(model="dall-e-3", prompt=prompt, size="1024x1024", quality="standard", n=1)
         image_url = response.data[0].url
         await db.deduct_user_credits(supabase, chat_id, IMAGE_COST)
-        await update.message.reply_photo(photo=image_url, caption=f"Изображение готово! Списано {IMAGE_COST} кредитов.")
+        
+        success_message = get_text(user_language, 'image_ready', cost=IMAGE_COST)
+        await update.message.reply_photo(photo=image_url, caption=success_message)
     except Exception as e:
         print(f"Ошибка DALL-E: {e}")
-        await update.message.reply_text("Не удалось создать изображение. Кредиты не списаны.")
+        error_message = get_text(user_language, 'image_error')
+        await update.message.reply_text(error_message)
     finally:
         await db.set_user_state(supabase, chat_id, "chat")
 
@@ -33,9 +41,13 @@ async def chat_with_ai(update: Update, context: ContextTypes.DEFAULT_TYPE, clien
     chat_id = update.effective_chat.id
     message_text = update.message.text
     
+    # Получаем язык пользователя
+    user_language = await db.get_user_language(supabase, chat_id)
+    
     current_credits = await db.get_user_credits(supabase, chat_id)
     if current_credits < MESSAGE_COST:
-        await update.message.reply_text(f"У вас закончились кредиты. Для ответа нужно: {MESSAGE_COST}.")
+        error_message = get_text(user_language, 'insufficient_credits_chat', cost=MESSAGE_COST)
+        await update.message.reply_text(error_message)
         return
 
     user = await db.get_user_data(supabase, chat_id)
@@ -56,7 +68,8 @@ async def chat_with_ai(update: Update, context: ContextTypes.DEFAULT_TYPE, clien
         await update.message.reply_text(ai_response_text)
     except Exception as e:
         print(f"Ошибка OpenAI Chat: {e}")
-        await update.message.reply_text("Извините, произошла ошибка. Кредиты не списаны.")
+        error_message = get_text(user_language, 'chat_error')
+        await update.message.reply_text(error_message)
 
 # ИСПРАВЛЕНО: Принимаем client и supabase
 def register_handlers(application, client: OpenAI, supabase):
@@ -65,7 +78,9 @@ def register_handlers(application, client: OpenAI, supabase):
         
         user = await db.get_user_data(supabase, chat_id)
         if not user:
-            await db.add_or_update_user(supabase, chat_id)
+            # Если пользователя нет, создаем с автоопределением языка
+            user_language_code = update.effective_user.language_code
+            await db.add_or_update_user(supabase, chat_id, language_code=user_language_code)
             user = await db.get_user_data(supabase, chat_id)
 
         state = user.get("state", "chat")

@@ -3,6 +3,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler
 from database import db
+from translations import get_text
 
 def register_handlers(application, supabase):
     
@@ -11,10 +12,14 @@ def register_handlers(application, supabase):
         user_name = update.effective_user.first_name
         bot_username = context.bot.username  # Получаем юзернейм бота динамически
         
+        # Получаем язык пользователя
+        user_language = await db.get_user_language(supabase, user_id)
+        
         user_data = await db.get_user_data(supabase, user_id)
         
         if not user_data:
-            await update.message.reply_text("❌ Не удалось найти ваш профиль. Попробуйте /start.")
+            error_message = get_text(user_language, 'profile_not_found')
+            await update.message.reply_text(error_message)
             return
             
         credits = user_data.get('credits', 0)
@@ -28,30 +33,24 @@ def register_handlers(application, supabase):
         # Формируем реферальную ссылку
         referral_link = f"https://t.me/{bot_username}?start={referral_code}"
         
-        # Создаем текст профиля
-        profile_text = f"👤 **Личный кабинет** - {user_name}\n\n"
+        # Создаем текст профиля на языке пользователя
+        profile_text = get_text(user_language, 'profile_title', name=user_name) + "\n\n"
         
         # Основная информация
-        profile_text += f"**🆔 ID пользователя:** `{user_id}`\n"
-        profile_text += f"**💰 Баланс:** {credits} кредитов\n\n"
+        profile_text += get_text(user_language, 'profile_user_id', user_id=user_id) + "\n"
+        profile_text += get_text(user_language, 'profile_balance', credits=credits) + "\n\n"
         
         # Реферальная информация
-        profile_text += f"🔗 **Реферальная программа:**\n"
-        profile_text += f"📊 Приглашено друзей: **{invited_count}**\n"
+        profile_text += get_text(user_language, 'profile_referral_program') + "\n"
+        profile_text += get_text(user_language, 'profile_invited_friends', count=invited_count) + "\n"
         
         if invited_by:
-            profile_text += f"👥 Вас пригласил: `{invited_by}`\n"
+            profile_text += get_text(user_language, 'profile_invited_by', user_id=invited_by) + "\n"
         
-        profile_text += f"\n**Ваша реферальная ссылка:**\n`{referral_link}`\n\n"
+        profile_text += "\n" + get_text(user_language, 'profile_referral_link', link=referral_link) + "\n\n"
         
-        # Информация о бонусах
-        profile_text += (
-            "💡 **Как это работает:**\n"
-            "• Поделитесь ссылкой с друзьями\n"
-            "• Они получат +2 кредита при регистрации\n"
-            "• Вы получите +5 кредитов за каждого друга\n\n"
-            "🎯 Приглашайте больше друзей и получайте больше кредитов!"
-        )
+        # Информация о том, как работает система
+        profile_text += get_text(user_language, 'profile_how_it_works')
         
         await update.message.reply_text(profile_text, parse_mode='Markdown')
 

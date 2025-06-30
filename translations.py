@@ -19,9 +19,10 @@ TRANSLATIONS = {
         'back': "⬅️ Назад",
         'back_to_menu': "⬅️ Назад в меню",
         
-        # Режимы чата
-        'select_chat_mode': "Выберите режим общения:",
-        'mode_changed': "Режим изменен на: *{mode}*. Возвращаю в главное меню...",
+        # Режимы чата (локализованные названия)
+        'chat_mode_assistant': "Помощник",
+        'chat_mode_joker': "Шутник", 
+        'chat_mode_translator': "Переводчик",
         
         # Модели
         'select_model_menu': "Выберите модель для общения:",
@@ -96,6 +97,23 @@ TRANSLATIONS = {
         'language_settings_hint': "Выберите язык для интерфейса бота:",
         'language_changed_interface': "✅ **Язык интерфейса изменен!**\n\nВыбранный язык: {language}\n\nТеперь бот будет общаться с вами на этом языке!",
         'language_change_interface_error': "❌ Ошибка при смене языка интерфейса.",
+
+        # Админские команды
+        'admin_welcome': "👑 **Добро пожаловать в админ-панель!**\n\n📊 **Статистика:**\n/stats - Показать статистику бота\n/user\\_info <user\\_id> - Подробная информация о пользователе\n\n💰 **Управление кредитами:**\n/add\\_credits <user\\_id> <количество> - Начислить кредиты\n/remove\\_credits <user\\_id> <количество> - Снять кредиты\n\n📢 **Рассылка:**\n/broadcast <сообщение> - Отправить всем пользователям\n\nℹ️ Используйте команды для управления ботом.",
+        'admin_command_format_error': "❌ **Неверный формат команды**\n\nИспользуйте: `{command}`\n\n**Пример:** `{example}`",
+        'admin_credits_positive': "❌ Количество кредитов должно быть положительным числом.",
+        'admin_user_not_found': "❌ Пользователь с ID {user_id} не найден в базе данных.",
+        'admin_credits_added_success': "✅ **Кредиты успешно начислены!**\n\n👤 **Пользователь:** `{user_id}`\n➕ **Начислено:** {amount} кредитов\n💰 **Было:** {old_balance} кредитов\n💰 **Стало:** {new_balance} кредитов",
+        'admin_credits_removed_success': "✅ **Кредиты успешно сняты!**\n\n👤 **Пользователь:** `{user_id}`\n➖ **Снято:** {amount} кредитов\n💰 **Было:** {old_balance} кредитов\n💰 **Стало:** {new_balance} кредитов",
+        'admin_balance_negative_warning': "⚠️ **Внимание:** Баланс пользователя ушел в минус!",
+        'admin_credits_remove_failed': "❌ **Не удалось снять кредиты**\n\n👤 **Пользователь:** `{user_id}`\n💰 **Текущий баланс:** {current} кредитов\n➖ **Попытка снять:** {amount} кредитов\n\n💡 **Причина:** Недостаточно кредитов для снятия.\nИспользуйте `force` для принудительного снятия:\n`{command} {user_id} {amount} force`",
+        'admin_user_notified_credits_added': "Вам было начислено **{amount} кредитов** администратором!\n\n💰 **Текущий баланс:** {balance} кредитов",
+        'admin_user_notified_credits_removed': "С вашего счета было снято **{amount} кредитов** администратором.\n\n💰 **Текущий баланс:** {balance} кредитов",
+        'admin_user_balance_negative': "⚠️ Ваш баланс ушел в минус. Обратитесь к администратору.",
+        'admin_notification_failed': "⚠️ Кредиты начислены, но не удалось уведомить пользователя: {error}",
+        'admin_broadcast_start': "Начинаю рассылку для {count} пользователей...",
+        'admin_broadcast_complete': "Рассылка завершена! Успешно: {success}, Ошибок: {failed}",
+        'admin_broadcast_no_message': "Укажите сообщение. Пример: /broadcast Привет!",
         
         # Языки
         'lang_russian': "🇷🇺 Русский",
@@ -128,9 +146,10 @@ TRANSLATIONS = {
         'back': "⬅️ Back",
         'back_to_menu': "⬅️ Back to menu",
         
-        # Режимы чата
-        'select_chat_mode': "Select chat mode:",
-        'mode_changed': "Mode changed to: *{mode}*. Returning to main menu...",
+        # Режимы чата (локализованные названия)
+        'chat_mode_assistant': "Assistant",
+        'chat_mode_joker': "Joker",
+        'chat_mode_translator': "Translator",
         
         # Модели
         'select_model_menu': "Select model for communication:",
@@ -210,6 +229,23 @@ TRANSLATIONS = {
         'lang_russian': "🇷🇺 Русский",
         'lang_english': "🇺🇸 English",
         'lang_polish': "🇵🇱 Polski",
+
+         # Админские команды
+        'admin_welcome': "👑 **Welcome to admin panel!**\n\n📊 **Statistics:**\n/stats - Show bot statistics\n/user\\_info <user\\_id> - Detailed user information\n\n💰 **Credit management:**\n/add\\_credits <user\\_id> <amount> - Add credits\n/remove\\_credits <user\\_id> <amount> - Remove credits\n\n📢 **Broadcast:**\n/broadcast <message> - Send to all users\n\nℹ️ Use commands to manage the bot.",
+        'admin_command_format_error': "❌ **Invalid command format**\n\nUse: `{command}`\n\n**Example:** `{example}`",
+        'admin_credits_positive': "❌ Credit amount must be a positive number.",
+        'admin_user_not_found': "❌ User with ID {user_id} not found in database.",
+        'admin_credits_added_success': "✅ **Credits successfully added!**\n\n👤 **User:** `{user_id}`\n➕ **Added:** {amount} credits\n💰 **Was:** {old_balance} credits\n💰 **Now:** {new_balance} credits",
+        'admin_credits_removed_success': "✅ **Credits successfully removed!**\n\n👤 **User:** `{user_id}`\n➖ **Removed:** {amount} credits\n💰 **Was:** {old_balance} credits\n💰 **Now:** {new_balance} credits",
+        'admin_balance_negative_warning': "⚠️ **Warning:** User balance went negative!",
+        'admin_credits_remove_failed': "❌ **Failed to remove credits**\n\n👤 **User:** `{user_id}`\n💰 **Current balance:** {current} credits\n➖ **Attempted to remove:** {amount} credits\n\n💡 **Reason:** Insufficient credits for removal.\nUse `force` for forced removal:\n`{command} {user_id} {amount} force`",
+        'admin_user_notified_credits_added': "You have been credited **{amount} credits** by administrator!\n\n💰 **Current balance:** {balance} credits",
+        'admin_user_notified_credits_removed': "**{amount} credits** have been deducted from your account by administrator.\n\n💰 **Current balance:** {balance} credits",
+        'admin_user_balance_negative': "⚠️ Your balance went negative. Contact administrator.",
+        'admin_notification_failed': "⚠️ Credits added, but failed to notify user: {error}",
+        'admin_broadcast_start': "Starting broadcast for {count} users...",
+        'admin_broadcast_complete': "Broadcast completed! Success: {success}, Errors: {failed}",
+        'admin_broadcast_no_message': "Specify message. Example: /broadcast Hello!",
         
         # AI чат
         'insufficient_credits_chat': "You've run out of credits. Need for response: {cost}.",
@@ -279,6 +315,11 @@ TRANSLATIONS = {
         'voice_change_error_voice': "❌ Błąd podczas zmiany głosu.",
         'language_changed_success': "✅ **Język rozpoznawania zmieniony!**\n\nWybrany język: {language}\n\nTeraz wyślij wiadomość głosową w tym języku, aby przetestować!",
         'language_change_error': "❌ Błąd podczas zmiany języka.",
+
+        # Режимы чата (локализованные названия)
+        'chat_mode_assistant': "Asystent", 
+        'chat_mode_joker': "Żartowniś",
+        'chat_mode_translator': "Tłumacz",
         
         # Przetwarzanie głosu
         'recognizing_speech': "🎙️ Rozpoznaję mowę...",
@@ -319,6 +360,23 @@ TRANSLATIONS = {
         'lang_russian': "🇷🇺 Русский",
         'lang_english': "🇺🇸 English",
         'lang_polish': "🇵🇱 Polski",
+
+        # Админские команды
+        'admin_welcome': "👑 **Witamy w panelu administratora!**\n\n📊 **Statystyki:**\n/stats - Pokaż statystyki bota\n/user\\_info <user\\_id> - Szczegółowe informacje o użytkowniku\n\n💰 **Zarządzanie kredytami:**\n/add\\_credits <user\\_id> <ilość> - Dodaj kredyty\n/remove\\_credits <user\\_id> <ilość> - Usuń kredyty\n\n📢 **Rozsyłanie:**\n/broadcast <wiadomość> - Wyślij do wszystkich użytkowników\n\nℹ️ Używaj komend do zarządzania botem.",
+        'admin_command_format_error': "❌ **Nieprawidłowy format komendy**\n\nUżyj: `{command}`\n\n**Przykład:** `{example}`",
+        'admin_credits_positive': "❌ Ilość kredytów musi być liczbą dodatnią.",
+        'admin_user_not_found': "❌ Użytkownik o ID {user_id} nie został znaleziony w bazie danych.",
+        'admin_credits_added_success': "✅ **Kredyty zostały pomyślnie dodane!**\n\n👤 **Użytkownik:** `{user_id}`\n➕ **Dodano:** {amount} kredytów\n💰 **Było:** {old_balance} kredytów\n💰 **Jest:** {new_balance} kredytów",
+        'admin_credits_removed_success': "✅ **Kredyty zostały pomyślnie usunięte!**\n\n👤 **Użytkownik:** `{user_id}`\n➖ **Usunięto:** {amount} kredytów\n💰 **Było:** {old_balance} kredytów\n💰 **Jest:** {new_balance} kredytów",
+        'admin_balance_negative_warning': "⚠️ **Uwaga:** Saldo użytkownika spadło poniżej zera!",
+        'admin_credits_remove_failed': "❌ **Nie udało się usunąć kredytów**\n\n👤 **Użytkownik:** `{user_id}`\n💰 **Obecne saldo:** {current} kredytów\n➖ **Próba usunięcia:** {amount} kredytów\n\n💡 **Powód:** Niewystarczające kredyty do usunięcia.\nUżyj `force` dla wymuszenia:\n`{command} {user_id} {amount} force`",
+        'admin_user_notified_credits_added': "Otrzymałeś **{amount} kredytów** od administratora!\n\n💰 **Obecne saldo:** {balance} kredytów",
+        'admin_user_notified_credits_removed': "Z twojego konta zostało pobrane **{amount} kredytów** przez administratora.\n\n💰 **Obecne saldo:** {balance} kredytów",
+        'admin_user_balance_negative': "⚠️ Twoje saldo spadło poniżej zera. Skontaktuj się z administratorem.",
+        'admin_notification_failed': "⚠️ Kredyty dodane, ale nie udało się powiadomić użytkownika: {error}",
+        'admin_broadcast_start': "Rozpoczynam rozsyłanie dla {count} użytkowników...",
+        'admin_broadcast_complete': "Rozsyłanie zakończone! Sukces: {success}, Błędy: {failed}",
+        'admin_broadcast_no_message': "Podaj wiadomość. Przykład: /broadcast Cześć!",
         
         # Chat AI
         'insufficient_credits_chat': "Skończyły ci się kredyty. Potrzebujesz na odpowiedź: {cost}.",

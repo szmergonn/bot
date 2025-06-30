@@ -10,6 +10,7 @@ from config import (
     VOICE_TO_TEXT_COST, TEXT_TO_VOICE_COST, MAX_VOICE_DURATION,
     AVAILABLE_VOICES, MESSAGE_COST
 )
+from translations import get_text
 
 def register_handlers(application, openai_client: OpenAI, supabase):
     
@@ -17,6 +18,9 @@ def register_handlers(application, openai_client: OpenAI, supabase):
         """Обрабатывает голосовые сообщения - распознавание речи."""
         user_id = update.effective_user.id
         print(f"🎙️ ПОЛУЧЕНО ГОЛОСОВОЕ СООБЩЕНИЕ от пользователя {user_id}")
+        
+        # Получаем язык пользователя
+        user_language = await db.get_user_language(supabase, user_id)
         
         # Получаем настройки пользователя для определения нужного количества кредитов
         voice_settings = await db.get_user_voice_settings(supabase, user_id)
@@ -26,11 +30,11 @@ def register_handlers(application, openai_client: OpenAI, supabase):
         if voice_enabled:
             # Если включены голосовые ответы: распознавание + генерация голоса + сообщение AI
             required_credits = VOICE_TO_TEXT_COST + TEXT_TO_VOICE_COST + MESSAGE_COST
-            operation_description = f"полного голосового взаимодействия (распознавание + голосовой ответ)"
+            operation_description = get_text(user_language, 'voice_response_cost', cost=required_credits).replace('• ', '').replace(' кредитов (распознавание + синтез + AI)', '').replace(' credits (recognition + synthesis + AI)', '').replace(' kredytów (rozpoznawanie + synteza + AI)', '')
         else:
             # Если голосовые ответы выключены: только распознавание
             required_credits = VOICE_TO_TEXT_COST
-            operation_description = f"распознавания речи"
+            operation_description = get_text(user_language, 'voice_recognition_cost', cost=required_credits).replace('• ', '').replace(' кредитов', '').replace(' credits', '').replace(' kredytów', '')
         
         # Проверяем баланс
         current_credits = await db.get_user_credits(supabase, user_id)
@@ -39,26 +43,23 @@ def register_handlers(application, openai_client: OpenAI, supabase):
         if current_credits < required_credits:
             if voice_enabled and current_credits >= VOICE_TO_TEXT_COST:
                 # Достаточно для распознавания, но не для голосового ответа
-                await update.message.reply_text(
-                    f"⚠️ **Недостаточно кредитов для голосового ответа**\n\n"
-                    f"💰 **У вас:** {current_credits} кредитов\n"
-                    f"🎙️ **Нужно для голосового ответа:** {required_credits} кредитов\n\n"
-                    f"💡 **Варианты:**\n"
-                    f"• Отключите голосовые ответы в /menu → 🎙️ Голосовые сообщения\n"
-                    f"• Пополните баланс у администратора\n"
-                    f"• Я могу распознать речь и ответить текстом за {VOICE_TO_TEXT_COST} кредитов",
-                    parse_mode='Markdown'
+                error_message = get_text(
+                    user_language, 'insufficient_credits_voice_full',
+                    current=current_credits,
+                    needed=required_credits,
+                    recognition_cost=VOICE_TO_TEXT_COST
                 )
+                await update.message.reply_text(error_message, parse_mode='Markdown')
                 return
             else:
                 # Недостаточно даже для распознавания
-                await update.message.reply_text(
-                    f"❌ **Недостаточно кредитов для {operation_description}**\n\n"
-                    f"💰 **У вас:** {current_credits} кредитов\n"
-                    f"🎙️ **Нужно:** {required_credits} кредитов\n\n"
-                    f"💡 Обратитесь к администратору для пополнения баланса.",
-                    parse_mode='Markdown'
+                error_message = get_text(
+                    user_language, 'insufficient_credits_voice_recognition',
+                    operation=operation_description,
+                    current=current_credits,
+                    needed=required_credits
                 )
+                await update.message.reply_text(error_message, parse_mode='Markdown')
                 return
         
         voice = update.message.voice
@@ -67,16 +68,19 @@ def register_handlers(application, openai_client: OpenAI, supabase):
         # Проверяем длительность
         if voice.duration > MAX_VOICE_DURATION:
             print(f"❌ Голосовое слишком длинное: {voice.duration} > {MAX_VOICE_DURATION}")
-            await update.message.reply_text(
-                f"❌ Голосовое сообщение слишком длинное!\n"
-                f"Максимум: {MAX_VOICE_DURATION} секунд, у вас: {voice.duration} секунд"
+            error_message = get_text(
+                user_language, 'voice_too_long',
+                max_duration=MAX_VOICE_DURATION,
+                duration=voice.duration
             )
+            await update.message.reply_text(error_message)
             return
         
         language = voice_settings.get('voice_language', 'ru')
         print(f"🌍 Язык распознавания: {language}")
         
-        await update.message.reply_text("🎙️ Распознаю речь...")
+        processing_message = get_text(user_language, 'recognizing_speech')
+        await update.message.reply_text(processing_message)
         
         try:
             print("📥 Скачиваю голосовое сообщение...")
@@ -105,32 +109,31 @@ def register_handlers(application, openai_client: OpenAI, supabase):
             await db.increment_voice_stats(supabase, user_id, "received")
             
             # Отправляем результат распознавания
-            await update.message.reply_text(
-                f"🎙️ **Распознанный текст:**\n{transcript}\n\n"
-                f"💰 Списано {VOICE_TO_TEXT_COST} кредитов",
-                parse_mode='Markdown'
+            recognition_message = get_text(
+                user_language, 'recognized_text',
+                text=transcript,
+                cost=VOICE_TO_TEXT_COST
             )
+            await update.message.reply_text(recognition_message, parse_mode='Markdown')
             
             # Проверяем, нужно ли отвечать голосом
             if voice_enabled:
                 print("🔊 Генерирую голосовой ответ...")
-                await generate_voice_response(update, context, openai_client, supabase, transcript)
+                await generate_voice_response(update, context, openai_client, supabase, transcript, user_language)
             else:
                 print("💬 Генерирую текстовый ответ...")
                 # Обычный текстовый ответ через AI
-                await process_text_for_ai(update, context, openai_client, supabase, transcript)
+                await process_text_for_ai(update, context, openai_client, supabase, transcript, user_language)
                 
         except Exception as e:
             print(f"❌ ОШИБКА при распознавании речи: {e}")
             import traceback
             traceback.print_exc()
-            await update.message.reply_text(
-                "❌ Не удалось распознать речь. Попробуйте еще раз.\n"
-                "Кредиты не были списаны."
-            )
+            error_message = get_text(user_language, 'voice_recognition_error')
+            await update.message.reply_text(error_message)
 
     async def generate_voice_response(update: Update, context: ContextTypes.DEFAULT_TYPE, 
-                                    openai_client: OpenAI, supabase, text: str):
+                                    openai_client: OpenAI, supabase, text: str, user_language: str):
         """Генерирует голосовой ответ на текст."""
         user_id = update.effective_user.id
         
@@ -160,7 +163,8 @@ def register_handlers(application, openai_client: OpenAI, supabase):
             voice_settings = await db.get_user_voice_settings(supabase, user_id)
             selected_voice = voice_settings.get('selected_voice', 'alloy')
             
-            await update.message.reply_text("🔊 Генерирую голосовой ответ...")
+            generating_message = get_text(user_language, 'generating_voice_response')
+            await update.message.reply_text(generating_message)
             
             # Создаем TTS через OpenAI
             tts_response = openai_client.audio.speech.create(
@@ -187,20 +191,19 @@ def register_handlers(application, openai_client: OpenAI, supabase):
             await db.increment_voice_stats(supabase, user_id, "sent")
             
             # Отправляем голосовое сообщение
+            caption = get_text(user_language, 'voice_response_caption', cost=total_cost)
             await update.message.reply_voice(
                 voice=audio_data,
-                caption=f"🔊 Голосовой ответ\n💰 Списано {total_cost} кредитов"
+                caption=caption
             )
             
         except Exception as e:
             print(f"Ошибка при генерации голосового ответа: {e}")
-            await update.message.reply_text(
-                "❌ Не удалось сгенерировать голосовой ответ.\n"
-                "Попробуйте текстовый режим."
-            )
+            error_message = get_text(user_language, 'voice_generation_error')
+            await update.message.reply_text(error_message)
 
     async def process_text_for_ai(update: Update, context: ContextTypes.DEFAULT_TYPE,
-                                openai_client: OpenAI, supabase, text: str):
+                                openai_client: OpenAI, supabase, text: str, user_language: str):
         """Обрабатывает текст через AI (обычный текстовый ответ)."""
         user_id = update.effective_user.id
         
@@ -211,10 +214,13 @@ def register_handlers(application, openai_client: OpenAI, supabase):
             
             # Проверяем баланс для текстового ответа
             if current_credits < MESSAGE_COST:
-                await update.message.reply_text(
-                    f"❌ Недостаточно кредитов для ответа AI.\n"
-                    f"Нужно: {MESSAGE_COST} кредитов, у вас: {current_credits}"
+                error_message = get_text(
+                    user_language, 'insufficient_credits_voice_recognition',
+                    operation=get_text(user_language, 'insufficient_credits_chat', cost=MESSAGE_COST).replace(f"Для ответа нужно: {MESSAGE_COST}.", "ответа AI").replace(f"Need for response: {MESSAGE_COST}.", "AI response").replace(f"Potrzebujesz na odpowiedź: {MESSAGE_COST}.", "odpowiedzi AI"),
+                    current=current_credits,
+                    needed=MESSAGE_COST
                 )
+                await update.message.reply_text(error_message, parse_mode='Markdown')
                 return
             
             # Получаем историю и настройки
@@ -242,24 +248,23 @@ def register_handlers(application, openai_client: OpenAI, supabase):
             await db.add_message_to_history(supabase, user_id, "assistant", ai_response_text)
             
             # Отправляем ответ
-            await update.message.reply_text(
-                f"{ai_response_text}\n\n💰 Списано {MESSAGE_COST} кредитов"
-            )
+            response_message = f"{ai_response_text}\n\n💰 {get_text(user_language, 'recognized_text', text='', cost=MESSAGE_COST).split('💰')[1].strip()}"
+            await update.message.reply_text(response_message)
             
         except Exception as e:
             print(f"❌ ОШИБКА при генерации текстового ответа: {e}")
             import traceback
             traceback.print_exc()
-            await update.message.reply_text(
-                "❌ Не удалось сгенерировать ответ. Попробуйте еще раз.\n"
-                "Кредиты не были списаны."
-            )
+            error_message = get_text(user_language, 'text_response_error')
+            await update.message.reply_text(error_message)
 
     # --- КОМАНДЫ ДЛЯ НАСТРОЙКИ ГОЛОСА ---
 
     async def voice_settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Показывает меню настроек голоса (доступно через /voice)."""
         user_id = update.effective_user.id
+        user_language = await db.get_user_language(supabase, user_id)
+        
         voice_settings = await db.get_user_voice_settings(supabase, user_id)
         voice_stats = await db.get_voice_stats(supabase, user_id)
         
@@ -270,20 +275,20 @@ def register_handlers(application, openai_client: OpenAI, supabase):
                 current_voice_name = name
                 break
         
-        status = "🔊 Включены" if voice_settings.get('voice_enabled') else "🔇 Выключены"
+        status = get_text(user_language, 'voice_enabled') if voice_settings.get('voice_enabled') else get_text(user_language, 'voice_disabled')
         
         settings_text = (
-            f"🎙️ **Настройки голосовых сообщений**\n\n"
-            f"**Статус:** {status}\n"
-            f"**Текущий голос:** {current_voice_name}\n"
-            f"**Язык распознавания:** {voice_settings.get('voice_language', 'ru').upper()}\n\n"
-            f"📊 **Статистика:**\n"
-            f"• Отправлено голосовых: {voice_stats['sent']}\n"
-            f"• Получено голосовых: {voice_stats['received']}\n\n"
-            f"💰 **Стоимость:**\n"
-            f"• Распознавание речи: {VOICE_TO_TEXT_COST} кредитов\n"
-            f"• Голосовой ответ: {TEXT_TO_VOICE_COST} кредитов\n\n"
-            f"ℹ️ Для настройки используйте /menu → 🎙️ Голосовые сообщения"
+            f"{get_text(user_language, 'voice_settings_title')}\n\n"
+            f"{get_text(user_language, 'voice_status', status=status)}\n"
+            f"{get_text(user_language, 'current_voice', voice=current_voice_name)}\n"
+            f"{get_text(user_language, 'recognition_language', language=voice_settings.get('voice_language', 'ru').upper())}\n\n"
+            f"{get_text(user_language, 'voice_statistics')}\n"
+            f"{get_text(user_language, 'voice_sent', count=voice_stats['sent'])}\n"
+            f"{get_text(user_language, 'voice_received', count=voice_stats['received'])}\n\n"
+            f"{get_text(user_language, 'voice_costs')}\n"
+            f"{get_text(user_language, 'voice_recognition_cost', cost=VOICE_TO_TEXT_COST)}\n"
+            f"{get_text(user_language, 'voice_response_cost', cost=TEXT_TO_VOICE_COST)}\n\n"
+            f"ℹ️ {get_text(user_language, 'voice_test_hint').replace('ℹ️ ', '')}"
         )
         
         await update.message.reply_text(settings_text, parse_mode='Markdown')
