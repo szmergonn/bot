@@ -107,7 +107,8 @@ def register_handlers(application, supabase):
             
         elif query.data.startswith("set_lang_"):
             new_language = query.data.replace("set_lang_", "")
-            success = await db.set_user_language(supabase, user_id, new_language)
+            # ОБНОВЛЕНО: Используем новую функцию с синхронизацией голосового языка
+            success = await db.set_user_language_with_voice_sync(supabase, user_id, new_language)
             
             if success:
                 # Получаем название языка на новом языке
@@ -118,7 +119,14 @@ def register_handlers(application, supabase):
                 }
                 language_name = language_names.get(new_language, new_language)
                 
-                success_text = get_text(new_language, 'language_changed_interface', language=language_name)
+                # ОБНОВЛЕНО: Уведомляем об изменении и голосового языка
+                if new_language == 'ru':
+                    success_text = f"✅ **Язык интерфейса изменен!**\n\nВыбранный язык: {language_name}\n\n🎙️ **Также изменен язык голосового общения** на русский\n\nТеперь бот будет общаться с вами на этом языке!"
+                elif new_language == 'pl':
+                    success_text = f"✅ **Język interfejsu zmieniony!**\n\nWybrany język: {language_name}\n\n🎙️ **Język komunikacji głosowej również zmieniony** na polski\n\nTeraz bot będzie komunikować się z tobą w tym języku!"
+                else:  # English
+                    success_text = f"✅ **Interface language changed!**\n\nSelected language: {language_name}\n\n🎙️ **Voice communication language also changed** to English\n\nNow the bot will communicate with you in this language!"
+                
                 main_menu_markup = await build_main_menu(new_language)
                 await query.edit_message_text(success_text, reply_markup=main_menu_markup, parse_mode='Markdown')
             else:
@@ -186,10 +194,11 @@ def register_handlers(application, supabase):
                 current_voice_name = name
                 break
         
-        # Найдем название выбранного языка
+        # Найдем название выбранного языка (только из 3 доступных)
         current_language_name = "Не найден"
+        current_lang_code = voice_settings.get('voice_language', 'ru')
         for name, lang_code in AVAILABLE_LANGUAGES.items():
-            if lang_code == voice_settings.get('voice_language', 'ru'):
+            if lang_code == current_lang_code:
                 current_language_name = name
                 break
         
@@ -304,7 +313,7 @@ def register_handlers(application, supabase):
             )
 
     async def show_language_selection(query, user_language):
-        """Показывает меню выбора языка распознавания."""
+        """Показывает меню выбора языка распознавания (только 3 языка)."""
         buttons = []
         for language_name, language_code in AVAILABLE_LANGUAGES.items():
             buttons.append([InlineKeyboardButton(

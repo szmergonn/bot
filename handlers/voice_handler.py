@@ -22,6 +22,9 @@ def register_handlers(application, openai_client: OpenAI, supabase):
         # Получаем язык пользователя
         user_language = await db.get_user_language(supabase, user_id)
         
+        # НОВОЕ: Синхронизируем голосовой язык с интерфейсом при первом использовании
+        await db.sync_voice_language_with_interface(supabase, user_id)
+        
         # Получаем настройки пользователя для определения нужного количества кредитов
         voice_settings = await db.get_user_voice_settings(supabase, user_id)
         voice_enabled = voice_settings.get('voice_enabled', False)
@@ -76,8 +79,9 @@ def register_handlers(application, openai_client: OpenAI, supabase):
             await update.message.reply_text(error_message)
             return
         
-        language = voice_settings.get('voice_language', 'ru')
-        print(f"🌍 Язык распознавания: {language}")
+        # ОБНОВЛЕНО: Используем язык голосового общения (синхронизированный с интерфейсом)
+        language = voice_settings.get('voice_language', user_language)
+        print(f"🌍 Язык распознавания: {language} (интерфейс: {user_language})")
         
         processing_message = get_text(user_language, 'recognizing_speech')
         await update.message.reply_text(processing_message)
@@ -140,8 +144,10 @@ def register_handlers(application, openai_client: OpenAI, supabase):
         try:
             # Получаем текстовый ответ от AI
             user_data = await db.get_user_data(supabase, user_id)
-            from config import CHAT_MODES
-            system_prompt = CHAT_MODES.get(user_data['mode'], "Ты — полезный ассистент.")
+            
+            # ОБНОВЛЕНО: Используем многоязычный системный промпт
+            from config import get_system_prompt
+            system_prompt = get_system_prompt(user_data['mode'], user_language)
             history = await db.get_user_history(supabase, user_id)
             
             messages_for_api = [
@@ -149,6 +155,8 @@ def register_handlers(application, openai_client: OpenAI, supabase):
             ] + history + [
                 {"role": "user", "content": text}
             ]
+            
+            print(f"🤖 Используем системный промпт на языке {user_language}: {system_prompt[:50]}...")
             
             # Получаем ответ от AI
             response = openai_client.chat.completions.create(
@@ -158,6 +166,7 @@ def register_handlers(application, openai_client: OpenAI, supabase):
             )
             
             ai_response = response.choices[0].message.content
+            print(f"🤖 AI ответ: {ai_response[:50]}...")
             
             # Генерируем голосовой ответ
             voice_settings = await db.get_user_voice_settings(supabase, user_id)
@@ -223,12 +232,14 @@ def register_handlers(application, openai_client: OpenAI, supabase):
                 await update.message.reply_text(error_message, parse_mode='Markdown')
                 return
             
-            # Получаем историю и настройки
-            from config import CHAT_MODES
+            # ОБНОВЛЕНО: Используем многоязычный системный промпт
+            from config import get_system_prompt
             current_mode_name = user_data['mode']
             current_model = user_data['model']
             history = await db.get_user_history(supabase, user_id)
-            system_prompt = CHAT_MODES.get(current_mode_name, "Ты — полезный ассистент.")
+            system_prompt = get_system_prompt(current_mode_name, user_language)
+            
+            print(f"🤖 Используем системный промпт на языке {user_language}: {system_prompt[:50]}...")
             
             # Формируем сообщения для API
             messages_for_api = [{"role": "system", "content": system_prompt}] + history + [{"role": "user", "content": text}]
@@ -241,6 +252,8 @@ def register_handlers(application, openai_client: OpenAI, supabase):
                 messages=messages_for_api
             )
             ai_response_text = response.choices[0].message.content
+            
+            print(f"🤖 AI ответ: {ai_response_text[:50]}...")
             
             # Списываем кредиты и сохраняем в историю
             await db.deduct_user_credits(supabase, user_id, MESSAGE_COST)
@@ -275,13 +288,21 @@ def register_handlers(application, openai_client: OpenAI, supabase):
                 current_voice_name = name
                 break
         
+        # Найдем название выбранного языка (только из 3 доступных)
+        current_language_name = "Не найден"
+        current_lang_code = voice_settings.get('voice_language', 'ru')
+        for name, lang_code in AVAILABLE_LANGUAGES.items():
+            if lang_code == current_lang_code:
+                current_language_name = name
+                break
+        
         status = get_text(user_language, 'voice_enabled') if voice_settings.get('voice_enabled') else get_text(user_language, 'voice_disabled')
         
         settings_text = (
             f"{get_text(user_language, 'voice_settings_title')}\n\n"
             f"{get_text(user_language, 'voice_status', status=status)}\n"
             f"{get_text(user_language, 'current_voice', voice=current_voice_name)}\n"
-            f"{get_text(user_language, 'recognition_language', language=voice_settings.get('voice_language', 'ru').upper())}\n\n"
+            f"{get_text(user_language, 'recognition_language', language=current_language_name)}\n\n"
             f"{get_text(user_language, 'voice_statistics')}\n"
             f"{get_text(user_language, 'voice_sent', count=voice_stats['sent'])}\n"
             f"{get_text(user_language, 'voice_received', count=voice_stats['received'])}\n\n"

@@ -127,6 +127,9 @@ TRANSLATIONS = {
         # Ошибки
         'user_not_found': "❌ Пользователь с ID {user_id} не найден в базе данных.",
         'command_admin_only': "Эта команда доступна только администратору.",
+
+
+        'voice_language_synced': "🎙️ **Язык голосового общения автоматически синхронизирован** с языком интерфейса",
     },
     
     'en': {
@@ -254,6 +257,8 @@ TRANSLATIONS = {
         # Ошибки
         'user_not_found': "❌ User with ID {user_id} not found in database.",
         'command_admin_only': "This command is only available to administrators.",
+
+        'voice_language_synced': "🎙️ **Voice communication language automatically synchronized** with interface language",
     },
     
     'pl': {
@@ -385,6 +390,8 @@ TRANSLATIONS = {
         # Błędy
         'user_not_found': "❌ Użytkownik o ID {user_id} nie został znaleziony w bazie danych.",
         'command_admin_only': "Ta komenda jest dostępna tylko dla administratorów.",
+
+        'voice_language_synced': "🎙️ **Język komunikacji głosowej automatycznie zsynchronizowany** z językiem interfejsu",
     }
 }
 

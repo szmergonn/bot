@@ -54,7 +54,11 @@ async def chat_with_ai(update: Update, context: ContextTypes.DEFAULT_TYPE, clien
     current_mode_name = user['mode']
     current_model = user['model']
     history = await db.get_user_history(supabase, chat_id)
-    system_prompt = CHAT_MODES.get(current_mode_name, "Ты — полезный ассистент.")
+    
+    # ОБНОВЛЕНО: Используем многоязычный системный промпт
+    from config import get_system_prompt
+    system_prompt = get_system_prompt(current_mode_name, user_language)
+    
     messages_for_api = [{"role": "system", "content": system_prompt}] + history + [{"role": "user", "content": message_text}]
 
     await context.bot.send_chat_action(chat_id=chat_id, action='typing')

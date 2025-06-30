@@ -30,6 +30,10 @@ def register_handlers(application, supabase):
             await db.add_or_update_user(supabase, chat_id, language_code=user_language_code)
             await db.clear_user_history(supabase, chat_id)
             
+            # НОВОЕ: Синхронизируем голосовой язык с интерфейсом для новых пользователей
+            if not existing_user and user_language_code:
+                await db.sync_voice_language_with_interface(supabase, chat_id)
+            
             # Получаем язык пользователя для переводов
             user_language = await db.get_user_language(supabase, chat_id)
             
@@ -50,6 +54,10 @@ def register_handlers(application, supabase):
         
         # Создаем пользователя с автоопределением языка
         await db.add_or_update_user(supabase, user_id, language_code=user_language_code)
+        
+        # НОВОЕ: Синхронизируем голосовой язык с интерфейсом
+        await db.sync_voice_language_with_interface(supabase, user_id)
+        
         user_language = await db.get_user_language(supabase, user_id)
         
         if not inviter:
