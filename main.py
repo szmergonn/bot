@@ -26,8 +26,7 @@ async def setup_bot_commands(application):
         ("start", "🚀 Начать работу с ботом"),
         ("menu", "📱 Открыть главное меню"),  
         ("balance", "💰 Проверить баланс кредитов"),
-        ("profile", "👤 Личный кабинет"),
-        ("new", "🔄 Начать новый диалог")
+        ("profile", "👤 Личный кабинет")
     ]
     
     # Команды для английских пользователей  
@@ -35,8 +34,7 @@ async def setup_bot_commands(application):
         ("start", "🚀 Start using the bot"),
         ("menu", "📱 Open main menu"),
         ("balance", "💰 Check credit balance"), 
-        ("profile", "👤 User profile"),
-        ("new", "🔄 Start new chat")
+        ("profile", "👤 User profile")
     ]
     
     # Команды для польских пользователей
@@ -44,8 +42,7 @@ async def setup_bot_commands(application):
         ("start", "🚀 Rozpocznij korzystanie z bota"),
         ("menu", "📱 Otwórz menu główne"),
         ("balance", "💰 Sprawdź saldo kredytów"),
-        ("profile", "👤 Profil użytkownika"), 
-        ("new", "🔄 Rozpocznij nowy czat")
+        ("profile", "👤 Profil użytkownika")
     ]
     
     try:

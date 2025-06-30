@@ -102,24 +102,6 @@ def get_system_prompt(mode_name: str, language: str) -> str:
     # Последний fallback
     return "You are a helpful assistant."
 
-# НОВОЕ: Функция для автоматического определения языка голосового общения
-def get_voice_language_from_interface(interface_language: str) -> str:
-    """
-    Определяет язык для голосового общения на основе языка интерфейса.
-    
-    Args:
-        interface_language: Код языка интерфейса ('ru', 'en', 'pl')
-    
-    Returns:
-        Код языка для голосового общения
-    """
-    mapping = {
-        'ru': 'ru',
-        'en': 'en', 
-        'pl': 'pl'
-    }
-    return mapping.get(interface_language, 'en')
-
 # --- Проверка обязательных переменных ---
 required_vars = {
     "TELEGRAM_TOKEN": TELEGRAM_TOKEN,

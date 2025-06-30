@@ -25,6 +25,11 @@ async def add_or_update_user(supabase, user_id, invited_by=None, language_code=N
         # Определяем язык интерфейса
         from translations import detect_user_language
         interface_language = detect_user_language(language_code) if language_code else 'en'
+        
+        # НОВОЕ: Устанавливаем голосовой язык таким же как интерфейс
+        voice_language = interface_language  # ru/en/pl
+        
+        print(f"🌍 Новый пользователь {user_id}: интерфейс={interface_language}, голосовой={voice_language}")
             
         # Генерируем уникальный реферальный код
         referral_code = generate_referral_code(user_id)
@@ -44,8 +49,9 @@ async def add_or_update_user(supabase, user_id, invited_by=None, language_code=N
             "referral_code": referral_code,
             "selected_voice": DEFAULT_VOICE,
             "voice_enabled": False,
-            "voice_language": "ru",
-            "interface_language": interface_language
+            "voice_language": voice_language,  # ИСПРАВЛЕНО: используем интерфейсный язык
+            "interface_language": interface_language,
+            "streaming_enabled": True  # По умолчанию включаем streaming
         }
         
         # Добавляем информацию о том, кто пригласил, если есть
@@ -102,13 +108,11 @@ async def set_user_language_with_voice_sync(supabase, user_id, language_code):
     """
     Устанавливает язык интерфейса и автоматически синхронизирует язык голосового общения.
     """
-    from config import get_voice_language_from_interface
-    
     allowed_languages = ['ru', 'en', 'pl']
     if language_code in allowed_languages:
         try:
-            # Определяем соответствующий язык для голосового общения
-            voice_language = get_voice_language_from_interface(language_code)
+            # ОБНОВЛЕНО: Всегда синхронизируем голосовой язык с интерфейсным
+            voice_language = language_code  # ru->ru, en->en, pl->pl
             
             # Обновляем оба языка одновременно
             await supabase.table("users").update({
@@ -116,7 +120,7 @@ async def set_user_language_with_voice_sync(supabase, user_id, language_code):
                 "voice_language": voice_language
             }).eq("user_id", user_id).execute()
             
-            print(f"🌍 Пользователь {user_id}: интерфейс={language_code}, голосовой={voice_language}")
+            print(f"🔄 Пользователь {user_id}: интерфейс={language_code}, голосовой={voice_language} (синхронизированы)")
             return True
         except Exception as e:
             print(f"Ошибка при синхронизации языков для {user_id}: {e}")
@@ -125,21 +129,21 @@ async def set_user_language_with_voice_sync(supabase, user_id, language_code):
 async def sync_voice_language_with_interface(supabase, user_id):
     """
     Синхронизирует язык голосового общения с текущим языком интерфейса.
-    Полезно для существующих пользователей.
+    Теперь всегда: ru->ru, en->en, pl->pl
     """
     try:
         # Получаем текущий язык интерфейса
         interface_language = await get_user_language(supabase, user_id)
         
-        # Определяем соответствующий язык для голосового общения
-        from config import get_voice_language_from_interface
-        voice_language = get_voice_language_from_interface(interface_language)
+        # УПРОЩЕНО: Голосовой язык = интерфейсному языку
+        voice_language = interface_language  # ru->ru, en->en, pl->pl
         
         # Обновляем язык голосового общения
         await supabase.table("users").update({
             "voice_language": voice_language
         }).eq("user_id", user_id).execute()
         
+        print(f"🔄 Синхронизация {user_id}: {interface_language} -> {voice_language}")
         return True
     except Exception as e:
         print(f"Ошибка при синхронизации голосового языка для {user_id}: {e}")

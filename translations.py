@@ -6,7 +6,6 @@ TRANSLATIONS = {
         # Основные команды
         'welcome_message': "Привет, {user}! Я твой AI-ассистент.\n\nИспользуй /menu, чтобы выбрать режим.\nИспользуй /balance, чтобы проверить баланс кредитов.\nИспользуй /profile, чтобы открыть личный кабинет.",
         'welcome_back': "С возвращением, {user}!",
-        'new_dialog': "Отлично, начинаем новый диалог в текущем режиме!",
         'balance_info': "💰 У вас на балансе: {credits} кредитов.",
         
         # Меню
@@ -151,7 +150,6 @@ TRANSLATIONS = {
         # Основные команды
         'welcome_message': "Hello, {user}! I'm your AI assistant.\n\nUse /menu to select a mode.\nUse /balance to check your credit balance.\nUse /profile to open your account.",
         'welcome_back': "Welcome back, {user}!",
-        'new_dialog': "Great, starting a new dialog in current mode!",
         'balance_info': "💰 Your balance: {credits} credits.",
         
         # Меню
@@ -295,7 +293,6 @@ TRANSLATIONS = {
         # Podstawowe komendy
         'welcome_message': "Cześć, {user}! Jestem twoim asystentem AI.\n\nUżyj /menu, aby wybrać tryb.\nUżyj /balance, aby sprawdzić saldo kredytów.\nUżyj /profile, aby otworzyć swoje konto.",
         'welcome_back': "Witaj ponownie, {user}!",
-        'new_dialog': "Świetnie, rozpoczynamy nowy dialog w bieżącym trybie!",
         'balance_info': "💰 Twoje saldo: {credits} kredytów.",
         
         # Menu

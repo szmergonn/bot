@@ -121,15 +121,6 @@ def register_handlers(application, supabase):
             welcome_message = get_text(user_language, 'welcome_message', user=user.mention_html())
             await update.message.reply_html(welcome_message)
 
-    async def new_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        chat_id = update.effective_chat.id
-        user_language = await db.get_user_language(supabase, chat_id)
-        
-        await db.clear_user_history(supabase, chat_id)
-        
-        message = get_text(user_language, 'new_dialog')
-        await update.message.reply_text(message)
-
     async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         chat_id = update.effective_chat.id
         user_language = await db.get_user_language(supabase, chat_id)
@@ -139,5 +130,4 @@ def register_handlers(application, supabase):
         await update.message.reply_text(message)
 
     application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(CommandHandler("new", new_command))
     application.add_handler(CommandHandler("balance", balance_command))
