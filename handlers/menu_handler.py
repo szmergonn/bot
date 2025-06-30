@@ -15,6 +15,7 @@ def register_handlers(application, supabase):
             [InlineKeyboardButton(get_text(user_language, 'chat_mode'), callback_data="submenu_modes")],
             [InlineKeyboardButton(get_text(user_language, 'select_model'), callback_data="submenu_models")],
             [InlineKeyboardButton(get_text(user_language, 'voice_messages'), callback_data="voice_settings")],
+            [InlineKeyboardButton(get_text(user_language, 'streaming_enabled'), callback_data="streaming_settings")],
             [InlineKeyboardButton(get_text(user_language, 'generate_image'), callback_data="image_generate")],
             [InlineKeyboardButton(get_text(user_language, 'language_settings'), callback_data="language_settings")]
         ]
@@ -179,6 +180,16 @@ def register_handlers(application, supabase):
             
         elif query.data == "voice_settings_back":
             await show_voice_settings(query, supabase, user_id, user_language)
+            
+        # --- НОВЫЕ ОБРАБОТЧИКИ ДЛЯ STREAMING RESPONSE ---
+        elif query.data == "streaming_settings":
+            await show_streaming_settings(query, supabase, user_id, user_language)
+            
+        elif query.data == "streaming_toggle":
+            await toggle_streaming_mode(query, supabase, user_id, user_language)
+            
+        elif query.data == "streaming_settings_back":
+            await show_streaming_settings(query, supabase, user_id, user_language)
 
     # --- ФУНКЦИИ ДЛЯ РАБОТЫ С ГОЛОСОВЫМИ НАСТРОЙКАМИ ---
 
@@ -357,6 +368,62 @@ def register_handlers(application, supabase):
                 error_text,
                 reply_markup=InlineKeyboardMarkup([[
                     InlineKeyboardButton("🔙 " + get_text(user_language, 'back'), callback_data="voice_settings_back")
+                ]])
+            )
+
+    # --- ФУНКЦИИ ДЛЯ РАБОТЫ С STREAMING НАСТРОЙКАМИ ---
+
+    async def show_streaming_settings(query, supabase, user_id, user_language):
+        """Показывает настройки потоковых ответов."""
+        streaming_enabled = await db.get_user_streaming_setting(supabase, user_id)
+        
+        status = get_text(user_language, 'streaming_enabled_status') if streaming_enabled else get_text(user_language, 'streaming_disabled_status')
+        
+        settings_text = (
+            f"{get_text(user_language, 'streaming_settings_title')}\n\n"
+            f"{get_text(user_language, 'streaming_status', status=status)}\n\n"
+            f"{get_text(user_language, 'streaming_description')}"
+        )
+        
+        toggle_text = get_text(user_language, 'streaming_toggle_enable') if not streaming_enabled else get_text(user_language, 'streaming_toggle_disable')
+        
+        keyboard = [
+            [InlineKeyboardButton(toggle_text, callback_data="streaming_toggle")],
+            [InlineKeyboardButton(get_text(user_language, 'back_to_menu'), callback_data="main_menu")]
+        ]
+        
+        await query.edit_message_text(
+            settings_text,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
+    async def toggle_streaming_mode(query, supabase, user_id, user_language):
+        """Переключает режим потоковых ответов."""
+        current_setting = await db.get_user_streaming_setting(supabase, user_id)
+        new_status = not current_setting
+        
+        success = await db.set_user_streaming(supabase, user_id, new_status)
+        
+        if success:
+            if new_status:
+                message_text = get_text(user_language, 'streaming_enabled_success')
+            else:
+                message_text = get_text(user_language, 'streaming_disabled_success')
+                
+            await query.edit_message_text(
+                message_text,
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton("🔙 " + get_text(user_language, 'back'), callback_data="streaming_settings_back")
+                ]])
+            )
+        else:
+            error_text = get_text(user_language, 'streaming_change_error')
+            await query.edit_message_text(
+                error_text,
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton("🔙 " + get_text(user_language, 'back'), callback_data="streaming_settings_back")
                 ]])
             )
 

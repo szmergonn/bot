@@ -60,12 +60,12 @@ async def add_or_update_user(supabase, user_id, invited_by=None, language_code=N
         return None
 
 async def get_user_data(supabase, user_id):
-    """Получает все данные пользователя включая голосовые настройки и язык интерфейса."""
+    """Получает все данные пользователя включая голосовые настройки, язык интерфейса и streaming."""
     try:
         response = await supabase.table("users").select(
             "state, mode, credits, model, referral_code, invited_by, created_at, "
             "voice_enabled, selected_voice, voice_language, voice_messages_sent, voice_messages_received, "
-            "interface_language"
+            "interface_language, streaming_enabled"
         ).eq("user_id", user_id).execute()
         if response.data:
             return response.data[0]
@@ -232,6 +232,27 @@ async def get_voice_stats(supabase, user_id):
     except Exception as e:
         print(f"Ошибка при получении статистики голосовых для {user_id}: {e}")
     return {"sent": 0, "received": 0}
+
+# --- НОВЫЕ ФУНКЦИИ ДЛЯ STREAMING RESPONSE ---
+
+async def get_user_streaming_setting(supabase, user_id):
+    """Получает настройку streaming для пользователя."""
+    try:
+        response = await supabase.table("users").select("streaming_enabled").eq("user_id", user_id).execute()
+        if response.data:
+            return response.data[0].get('streaming_enabled', True)
+    except Exception as e:
+        print(f"Ошибка при получении настройки streaming для {user_id}: {e}")
+    return True  # По умолчанию включен
+
+async def set_user_streaming(supabase, user_id, enabled):
+    """Включает или выключает streaming response для пользователя."""
+    try:
+        await supabase.table("users").update({"streaming_enabled": enabled}).eq("user_id", user_id).execute()
+        return True
+    except Exception as e:
+        print(f"Ошибка при изменении streaming для {user_id}: {e}")
+        return False
 
 # --- СУЩЕСТВУЮЩИЕ ФУНКЦИИ (без изменений) ---
 

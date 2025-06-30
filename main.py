@@ -2,6 +2,7 @@
 
 from openai import OpenAI
 from telegram.ext import Application
+from telegram import BotCommandScopeAllPrivateChats
 import asyncio
 import logging
 
@@ -16,6 +17,72 @@ logging.basicConfig(
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
+async def setup_bot_commands(application):
+    """Настраивает меню команд бота для разных языков."""
+    
+    # Команды для русских пользователей
+    russian_commands = [
+        ("start", "🚀 Начать работу с ботом"),
+        ("menu", "📱 Открыть главное меню"),  
+        ("balance", "💰 Проверить баланс кредитов"),
+        ("profile", "👤 Личный кабинет"),
+        ("new", "🔄 Начать новый диалог")
+    ]
+    
+    # Команды для английских пользователей  
+    english_commands = [
+        ("start", "🚀 Start using the bot"),
+        ("menu", "📱 Open main menu"),
+        ("balance", "💰 Check credit balance"), 
+        ("profile", "👤 User profile"),
+        ("new", "🔄 Start new chat")
+    ]
+    
+    # Команды для польских пользователей
+    polish_commands = [
+        ("start", "🚀 Rozpocznij korzystanie z bota"),
+        ("menu", "📱 Otwórz menu główne"),
+        ("balance", "💰 Sprawdź saldo kredytów"),
+        ("profile", "👤 Profil użytkownika"), 
+        ("new", "🔄 Rozpocznij nowy czat")
+    ]
+    
+    try:
+        # Устанавливаем команды для всех пользователей (русский по умолчанию)
+        await application.bot.set_my_commands(russian_commands)
+        logger.info("✅ Установлены команды по умолчанию (русский)")
+        
+        # Устанавливаем команды для конкретных языков
+        
+        # Для русскоязычных пользователей
+        await application.bot.set_my_commands(
+            commands=russian_commands,
+            scope=BotCommandScopeAllPrivateChats(),
+            language_code="ru"
+        )
+        logger.info("✅ Установлены команды для русского языка")
+        
+        # Для англоязычных пользователей  
+        await application.bot.set_my_commands(
+            commands=english_commands,
+            scope=BotCommandScopeAllPrivateChats(),
+            language_code="en"
+        )
+        logger.info("✅ Установлены команды для английского языка")
+        
+        # Для польскоязычных пользователей
+        await application.bot.set_my_commands(
+            commands=polish_commands,
+            scope=BotCommandScopeAllPrivateChats(),
+            language_code="pl"
+        )
+        logger.info("✅ Установлены команды для польского языка")
+        
+        logger.info("🎉 Меню команд настроено для всех языков!")
+        
+    except Exception as e:
+        logger.error(f"❌ Ошибка при настройке команд: {e}")
 
 async def main() -> None:
     """Основная функция, которая настраивает и запускает бота."""
@@ -40,9 +107,13 @@ async def main() -> None:
     try:
         logger.info("Запуск бота...")
         await application.initialize()
+        
+        # НОВОЕ: Настраиваем многоязычное меню команд
+        await setup_bot_commands(application)
+        
         await application.start()
         await application.updater.start_polling()
-        logger.info("Бот успешно запущен.")
+        logger.info("🚀 Бот успешно запущен с многоязычным меню!")
         
         while True:
             await asyncio.sleep(3600)

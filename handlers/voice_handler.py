@@ -213,7 +213,7 @@ def register_handlers(application, openai_client: OpenAI, supabase):
 
     async def process_text_for_ai(update: Update, context: ContextTypes.DEFAULT_TYPE,
                                 openai_client: OpenAI, supabase, text: str, user_language: str):
-        """Обрабатывает текст через AI (обычный текстовый ответ)."""
+        """Обрабатывает текст через AI (текстовый ответ на голосовое сообщение)."""
         user_id = update.effective_user.id
         
         try:
@@ -236,6 +236,7 @@ def register_handlers(application, openai_client: OpenAI, supabase):
             from config import get_system_prompt
             current_mode_name = user_data['mode']
             current_model = user_data['model']
+            streaming_enabled = user_data.get('streaming_enabled', True)
             history = await db.get_user_history(supabase, user_id)
             system_prompt = get_system_prompt(current_mode_name, user_language)
             
@@ -244,32 +245,74 @@ def register_handlers(application, openai_client: OpenAI, supabase):
             # Формируем сообщения для API
             messages_for_api = [{"role": "system", "content": system_prompt}] + history + [{"role": "user", "content": text}]
 
-            await context.bot.send_chat_action(chat_id=user_id, action='typing')
-            
-            # Получаем ответ от AI
-            response = openai_client.chat.completions.create(
-                model=current_model, 
-                messages=messages_for_api
-            )
-            ai_response_text = response.choices[0].message.content
-            
-            print(f"🤖 AI ответ: {ai_response_text[:50]}...")
-            
-            # Списываем кредиты и сохраняем в историю
-            await db.deduct_user_credits(supabase, user_id, MESSAGE_COST)
-            await db.add_message_to_history(supabase, user_id, "user", text)
-            await db.add_message_to_history(supabase, user_id, "assistant", ai_response_text)
-            
-            # Отправляем ответ
-            response_message = f"{ai_response_text}\n\n💰 {get_text(user_language, 'recognized_text', text='', cost=MESSAGE_COST).split('💰')[1].strip()}"
-            await update.message.reply_text(response_message)
-            
+            # НОВОЕ: Проверяем, включены ли потоковые ответы
+            if streaming_enabled:
+                await process_text_streaming(update, context, openai_client, supabase, messages_for_api, current_model, user_language, text, user_id)
+            else:
+                await process_text_regular(update, context, openai_client, supabase, messages_for_api, current_model, user_language, text, user_id)
+                
         except Exception as e:
             print(f"❌ ОШИБКА при генерации текстового ответа: {e}")
             import traceback
             traceback.print_exc()
             error_message = get_text(user_language, 'text_response_error')
             await update.message.reply_text(error_message)
+
+    async def process_text_streaming(update: Update, context: ContextTypes.DEFAULT_TYPE, openai_client: OpenAI, supabase, messages_for_api, model, user_language, original_text, user_id):
+        """Обрабатывает текстовый ответ в потоковом режиме."""
+        try:
+            # Инициализируем потоковый ответ
+            from streaming import StreamingResponse, stream_openai_response
+            streaming_handler = StreamingResponse(update, context, user_language)
+            
+            # Запускаем потоковый ответ
+            success = await streaming_handler.start_streaming()
+            if not success:
+                # Fallback на обычный режим
+                await process_text_regular(update, context, openai_client, supabase, messages_for_api, model, user_language, original_text, user_id)
+                return
+            
+            # Получаем потоковый ответ от OpenAI
+            ai_response_text = await stream_openai_response(openai_client, messages_for_api, model, streaming_handler)
+            
+            # Завершаем потоковый ответ
+            await streaming_handler.finalize_message(
+                final_text=ai_response_text,
+                add_credits_info=True,
+                credits_cost=MESSAGE_COST
+            )
+            
+            # Списываем кредиты и сохраняем в историю
+            await db.deduct_user_credits(supabase, user_id, MESSAGE_COST)
+            await db.add_message_to_history(supabase, user_id, "user", original_text)
+            await db.add_message_to_history(supabase, user_id, "assistant", ai_response_text)
+            
+        except Exception as e:
+            print(f"❌ Ошибка в потоковом режиме (голосовой): {e}")
+            # Fallback на обычный режим
+            await process_text_regular(update, context, openai_client, supabase, messages_for_api, model, user_language, original_text, user_id)
+
+    async def process_text_regular(update: Update, context: ContextTypes.DEFAULT_TYPE, openai_client: OpenAI, supabase, messages_for_api, model, user_language, original_text, user_id):
+        """Обрабатывает текстовый ответ в обычном режиме."""
+        await context.bot.send_chat_action(chat_id=user_id, action='typing')
+        
+        # Получаем ответ от AI
+        response = openai_client.chat.completions.create(
+            model=model, 
+            messages=messages_for_api
+        )
+        ai_response_text = response.choices[0].message.content
+        
+        print(f"🤖 AI ответ: {ai_response_text[:50]}...")
+        
+        # Списываем кредиты и сохраняем в историю
+        await db.deduct_user_credits(supabase, user_id, MESSAGE_COST)
+        await db.add_message_to_history(supabase, user_id, "user", original_text)
+        await db.add_message_to_history(supabase, user_id, "assistant", ai_response_text)
+        
+        # Отправляем ответ
+        response_message = f"{ai_response_text}\n\n💰 {get_text(user_language, 'recognized_text', text='', cost=MESSAGE_COST).split('💰')[1].strip()}"
+        await update.message.reply_text(response_message)
 
     # --- КОМАНДЫ ДЛЯ НАСТРОЙКИ ГОЛОСА ---
 

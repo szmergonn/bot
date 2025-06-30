@@ -128,6 +128,21 @@ TRANSLATIONS = {
         'user_not_found': "❌ Пользователь с ID {user_id} не найден в базе данных.",
         'command_admin_only': "Эта команда доступна только администратору.",
 
+        # Streaming Response
+        'streaming_thinking': "🤖 Генерирую ответ...",
+        'streaming_credits_deducted': "\n\n💰 Списано {cost} кредитов",
+        'streaming_enabled': "🔥 Потоковые ответы",
+        'streaming_settings_title': "🔥 **Настройки потоковых ответов**",
+        'streaming_status': "**Статус:** {status}",
+        'streaming_enabled_status': "🔥 Включены",
+        'streaming_disabled_status': "💬 Выключены",
+        'streaming_description': "**Потоковые ответы** — это когда AI «печатает» ответ в реальном времени, слово за словом, как в ChatGPT. Это создает ощущение живого общения!",
+        'streaming_toggle_enable': "🔥 Включить потоковые ответы",
+        'streaming_toggle_disable': "💬 Выключить потоковые ответы",
+        'streaming_enabled_success': "✅ **Потоковые ответы включены!**\n\n🔥 Теперь AI будет «печатать» ответы в реальном времени.\n\nОтправьте сообщение для проверки!",
+        'streaming_disabled_success': "✅ **Потоковые ответы выключены!**\n\n💬 Теперь AI будет отправлять полные ответы сразу.\n\nОтправьте сообщение для проверки!",
+        'streaming_change_error': "❌ Ошибка при изменении настроек потоковых ответов.",
+
 
         'voice_language_synced': "🎙️ **Язык голосового общения автоматически синхронизирован** с языком интерфейса",
     },
@@ -257,6 +272,21 @@ TRANSLATIONS = {
         # Ошибки
         'user_not_found': "❌ User with ID {user_id} not found in database.",
         'command_admin_only': "This command is only available to administrators.",
+
+        # Streaming Response  
+        'streaming_thinking': "🤖 Generating response...",
+        'streaming_credits_deducted': "\n\n💰 {cost} credits deducted",
+        'streaming_enabled': "🔥 Streaming responses",
+        'streaming_settings_title': "🔥 **Streaming Response Settings**",
+        'streaming_status': "**Status:** {status}",
+        'streaming_enabled_status': "🔥 Enabled",
+        'streaming_disabled_status': "💬 Disabled",
+        'streaming_description': "**Streaming responses** — AI \"types\" the response in real-time, word by word, like in ChatGPT. This creates a feeling of live communication!",
+        'streaming_toggle_enable': "🔥 Enable streaming responses",
+        'streaming_toggle_disable': "💬 Disable streaming responses",
+        'streaming_enabled_success': "✅ **Streaming responses enabled!**\n\n🔥 Now AI will \"type\" responses in real-time.\n\nSend a message to test!",
+        'streaming_disabled_success': "✅ **Streaming responses disabled!**\n\n💬 Now AI will send complete responses at once.\n\nSend a message to test!",
+        'streaming_change_error': "❌ Error changing streaming response settings.",
 
         'voice_language_synced': "🎙️ **Voice communication language automatically synchronized** with interface language",
     },
@@ -390,6 +420,21 @@ TRANSLATIONS = {
         # Błędy
         'user_not_found': "❌ Użytkownik o ID {user_id} nie został znaleziony w bazie danych.",
         'command_admin_only': "Ta komenda jest dostępna tylko dla administratorów.",
+
+        # Streaming Response
+        'streaming_thinking': "🤖 Generuję odpowiedź...",
+        'streaming_credits_deducted': "\n\n💰 Pobrano {cost} kredytów",
+        'streaming_enabled': "🔥 Odpowiedzi strumieniowe",
+        'streaming_settings_title': "🔥 **Ustawienia odpowiedzi strumieniowych**",
+        'streaming_status': "**Status:** {status}",
+        'streaming_enabled_status': "🔥 Włączone",
+        'streaming_disabled_status': "💬 Wyłączone", 
+        'streaming_description': "**Odpowiedzi strumieniowe** — AI \"pisze\" odpowiedź w czasie rzeczywistym, słowo po słowie, jak w ChatGPT. To tworzy wrażenie żywej komunikacji!",
+        'streaming_toggle_enable': "🔥 Włącz odpowiedzi strumieniowe",
+        'streaming_toggle_disable': "💬 Wyłącz odpowiedzi strumieniowe",
+        'streaming_enabled_success': "✅ **Odpowiedzi strumieniowe włączone!**\n\n🔥 Teraz AI będzie \"pisać\" odpowiedzi w czasie rzeczywistym.\n\nWyślij wiadomość, aby przetestować!",
+        'streaming_disabled_success': "✅ **Odpowiedzi strumieniowe wyłączone!**\n\n💬 Teraz AI będzie wysyłać pełne odpowiedzi od razu.\n\nWyślij wiadomość, aby przetestować!",
+        'streaming_change_error': "❌ Błąd podczas zmiany ustawień odpowiedzi strumieniowych.",
 
         'voice_language_synced': "🎙️ **Język komunikacji głosowej automatycznie zsynchronizowany** z językiem interfejsu",
     }
