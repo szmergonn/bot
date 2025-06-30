@@ -199,6 +199,33 @@ async def add_user_credits(supabase, user_id, amount):
         print(f"Ошибка при начислении кредитов {user_id}: {e}")
     return current_credits
 
+async def remove_user_credits(supabase, user_id, amount, allow_negative=False):
+    """Снимает кредиты у пользователя.
+    
+    Args:
+        supabase: клиент базы данных
+        user_id: ID пользователя
+        amount: количество кредитов для снятия (положительное число)
+        allow_negative: разрешить уход в минус (по умолчанию False)
+    
+    Returns:
+        tuple: (новый_баланс, успешно_ли_операция)
+    """
+    current_credits = await get_user_credits(supabase, user_id)
+    
+    if not allow_negative and current_credits < amount:
+        # Не можем снять больше, чем есть
+        return current_credits, False
+    
+    new_credits = current_credits - amount
+    
+    try:
+        await supabase.table("users").update({"credits": new_credits}).eq("user_id", user_id).execute()
+        return new_credits, True
+    except Exception as e:
+        print(f"Ошибка при снятии кредитов у {user_id}: {e}")
+        return current_credits, False
+
 async def get_all_user_ids(supabase):
     """Возвращает список ID всех пользователей."""
     try:
