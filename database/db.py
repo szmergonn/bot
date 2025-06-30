@@ -14,13 +14,17 @@ def generate_referral_code(user_id):
     random_part = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(REFERRAL_CODE_LENGTH))
     return f"ref{user_id}_{random_part}"
 
-async def add_or_update_user(supabase, user_id, invited_by=None):
+async def add_or_update_user(supabase, user_id, invited_by=None, language_code=None):
     """Добавляет нового пользователя с реферальным кодом и настройками голоса, если его нет."""
     try:
         # Проверяем, существует ли пользователь
         existing_user = await get_user_data(supabase, user_id)
         if existing_user:
             return existing_user
+            
+        # Определяем язык интерфейса
+        from translations import detect_user_language
+        interface_language = detect_user_language(language_code) if language_code else 'en'
             
         # Генерируем уникальный реферальный код
         referral_code = generate_referral_code(user_id)
@@ -40,7 +44,8 @@ async def add_or_update_user(supabase, user_id, invited_by=None):
             "referral_code": referral_code,
             "selected_voice": DEFAULT_VOICE,
             "voice_enabled": False,
-            "voice_language": "ru"
+            "voice_language": "ru",
+            "interface_language": interface_language
         }
         
         # Добавляем информацию о том, кто пригласил, если есть
@@ -68,6 +73,29 @@ async def get_user_data(supabase, user_id):
     return None
 
 # --- НОВЫЕ ФУНКЦИИ ДЛЯ ГОЛОСОВЫХ СООБЩЕНИЙ ---
+
+# --- НОВЫЕ ФУНКЦИИ ДЛЯ ЯЗЫКА ИНТЕРФЕЙСА ---
+
+async def get_user_language(supabase, user_id):
+    """Получает язык интерфейса пользователя."""
+    try:
+        response = await supabase.table("users").select("interface_language").eq("user_id", user_id).execute()
+        if response.data:
+            return response.data[0].get('interface_language', 'en')
+    except Exception as e:
+        print(f"Ошибка при получении языка пользователя {user_id}: {e}")
+    return 'en'
+
+async def set_user_language(supabase, user_id, language_code):
+    """Устанавливает язык интерфейса для пользователя."""
+    allowed_languages = ['ru', 'en', 'pl']
+    if language_code in allowed_languages:
+        try:
+            await supabase.table("users").update({"interface_language": language_code}).eq("user_id", user_id).execute()
+            return True
+        except Exception as e:
+            print(f"Ошибка при установке языка интерфейса для {user_id}: {e}")
+    return False
 
 async def get_user_voice_settings(supabase, user_id):
     """Получает голосовые настройки пользователя."""
