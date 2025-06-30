@@ -2,7 +2,7 @@
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler
-from config import CHAT_MODES, AVAILABLE_MODELS, AVAILABLE_VOICES, AVAILABLE_LANGUAGES, VOICE_TO_TEXT_COST, TEXT_TO_VOICE_COST
+from config import CHAT_MODES, AVAILABLE_MODELS, AVAILABLE_VOICES, AVAILABLE_LANGUAGES, VOICE_TO_TEXT_COST, TEXT_TO_VOICE_COST, MESSAGE_COST
 from database import db
 
 # ИСПРАВЛЕНО: Принимаем клиент supabase
@@ -107,6 +107,8 @@ def register_handlers(application, supabase):
         
         status = "🔊 Включены" if voice_settings.get('voice_enabled') else "🔇 Выключены"
         
+        total_voice_cost = VOICE_TO_TEXT_COST + TEXT_TO_VOICE_COST + MESSAGE_COST
+        
         settings_text = (
             f"🎙️ **Настройки голосовых сообщений**\n\n"
             f"**Статус:** {status}\n"
@@ -116,8 +118,9 @@ def register_handlers(application, supabase):
             f"• Отправлено голосовых: {voice_stats['sent']}\n"
             f"• Получено голосовых: {voice_stats['received']}\n\n"
             f"💰 **Стоимость:**\n"
-            f"• Распознавание: {VOICE_TO_TEXT_COST} кредитов\n"
-            f"• Голосовой ответ: {TEXT_TO_VOICE_COST} кредитов\n\n"
+            f"• Только распознавание: {VOICE_TO_TEXT_COST} кредитов\n"
+            f"• Голосовой ответ: {total_voice_cost} кредитов (распознавание + синтез + AI)\n\n"
+            f"⚠️ **Важно:** Для голосовых ответов нужно минимум {total_voice_cost} кредитов!\n\n"
             f"ℹ️ Отправьте голосовое сообщение для проверки!"
         )
         
